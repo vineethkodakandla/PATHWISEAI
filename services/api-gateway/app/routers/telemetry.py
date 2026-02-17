@@ -1,8 +1,7 @@
 # services/api-gateway/app/routers/telemetry.py
 
-from fastapi import APIRouter, Query
-from typing import Optional
 import redis.asyncio as redis
+from fastapi import APIRouter, Query
 
 from app.config import get_settings
 

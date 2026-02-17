@@ -1,12 +1,13 @@
 # services/prediction-engine/model/inference.py
 
-import torch
-import numpy as np
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-from .lstm_network import PathWiseLSTM
+import numpy as np
+import torch
+
 from .feature_engineering import FeatureEngineer
+from .lstm_network import PathWiseLSTM
 
 
 class InferenceEngine:

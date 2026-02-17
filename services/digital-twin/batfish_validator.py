@@ -1,7 +1,13 @@
 # services/digital-twin/batfish_validator.py
 
-from pybatfish.client.session import Session
-from pybatfish.datamodel.flow import HeaderConstraints
+try:
+    from pybatfish.client.session import Session
+    from pybatfish.datamodel.flow import HeaderConstraints
+    PYBATFISH_AVAILABLE = True
+except ImportError:
+    PYBATFISH_AVAILABLE = False
+    Session = None  # type: ignore[assignment,misc]
+    HeaderConstraints = None  # type: ignore[assignment,misc]
 
 class BatfishValidator:
     """
@@ -35,23 +41,23 @@ class BatfishValidator:
             name="validation_snapshot",
             overwrite=True,
         )
-        
+
         # Loop detection
         loop_results = self.bf.q.detectLoops().answer().frame()
         has_loops = len(loop_results) > 0
-        
+
         # ACL/Firewall compliance
         acl_results = self.bf.q.searchFilters(
             headers=HeaderConstraints(applications=["dns", "http", "https"]),
             action="deny",
         ).answer().frame()
-        
+
         # Check for unintended denies
         violations = []
         for _, row in acl_results.iterrows():
             if row.get("Flow") and "critical" in str(row.get("Flow", "")):
                 violations.append(f"Critical traffic blocked by {row.get('Filter', 'unknown')}")
-        
+
         return {
             "loop_free": not has_loops,
             "policy_compliant": len(violations) == 0,

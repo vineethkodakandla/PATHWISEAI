@@ -3,12 +3,11 @@
 import asyncio
 import json
 import logging
-from typing import Optional
-import redis.asyncio as redis
 
-from steering_engine import SteeringEngine, SteeringDecision
-from sdn_clients.opendaylight import OpenDaylightClient
+import redis.asyncio as redis
 from sdn_clients.onos import ONOSClient
+from sdn_clients.opendaylight import OpenDaylightClient
+from steering_engine import SteeringDecision, SteeringEngine
 
 logger = logging.getLogger(__name__)
 

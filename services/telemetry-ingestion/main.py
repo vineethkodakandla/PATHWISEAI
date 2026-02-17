@@ -7,9 +7,9 @@ SNMP/NetFlow/gNMI and publishes data to Redis Streams.
 """
 
 import asyncio
-import os
-import logging
 import json
+import logging
+import os
 from pathlib import Path
 
 from collector import TelemetryCollector

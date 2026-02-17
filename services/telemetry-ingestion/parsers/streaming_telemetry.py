@@ -1,9 +1,8 @@
 # services/telemetry-ingestion/parsers/streaming_telemetry.py
 
-import json
 import logging
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 

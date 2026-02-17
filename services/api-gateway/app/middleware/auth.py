@@ -1,9 +1,10 @@
 # services/api-gateway/app/middleware/auth.py
 
-from fastapi import Request, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Optional
 import logging
+from typing import Optional
+
+from fastapi import HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 

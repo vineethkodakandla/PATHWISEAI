@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 
+
 class PathWiseLSTM(nn.Module):
     """
     Multi-output LSTM for network telemetry forecasting.
@@ -17,7 +18,7 @@ class PathWiseLSTM(nn.Module):
     - Separate prediction heads for latency, jitter, and packet_loss
       to allow different optimization dynamics per metric.
     """
-    
+
     def __init__(
         self,
         input_size: int = 13,
@@ -31,7 +32,7 @@ class PathWiseLSTM(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.horizon = horizon
-        
+
         # Core LSTM encoder
         self.lstm = nn.LSTM(
             input_size=input_size,
@@ -40,14 +41,14 @@ class PathWiseLSTM(nn.Module):
             batch_first=True,
             dropout=dropout if num_layers > 1 else 0,
         )
-        
+
         # Temporal attention over LSTM outputs
         self.attention = nn.Sequential(
             nn.Linear(hidden_size, 64),
             nn.Tanh(),
             nn.Linear(64, 1),
         )
-        
+
         # Prediction heads — one per target metric
         self.latency_head = nn.Sequential(
             nn.Linear(hidden_size, 64),
@@ -67,7 +68,7 @@ class PathWiseLSTM(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(64, horizon),
         )
-        
+
         # Confidence estimation head (used by Health Scoreboard)
         self.confidence_head = nn.Sequential(
             nn.Linear(hidden_size, 32),
@@ -87,20 +88,21 @@ class PathWiseLSTM(nn.Module):
         """
         # LSTM encoding
         lstm_out, (h_n, _) = self.lstm(x)  # lstm_out: (batch, 60, 128)
-        
+
         # Attention: weighted sum of all timestep outputs
         attn_weights = self.attention(lstm_out)          # (batch, 60, 1)
         attn_weights = torch.softmax(attn_weights, dim=1)
         context = (lstm_out * attn_weights).sum(dim=1)   # (batch, 128)
-        
+
         # Predictions
+        confidence = self.confidence_head(context)        # (batch, 1)
         predictions = {
             "latency": self.latency_head(context),       # (batch, 30)
             "jitter": self.jitter_head(context),
             "packet_loss": self.packet_loss_head(context),
+            "confidence": confidence,                     # included for gradient flow
         }
-        confidence = self.confidence_head(context)        # (batch, 1)
-        
+
         return predictions, confidence
 
 
@@ -132,17 +134,23 @@ class PathWiseLoss(nn.Module):
             "jitter": targets[:, :, 1],
             "packet_loss": targets[:, :, 2],
         }
-        
+
         for key, weight in self.weights.items():
             pred = preds[key]
             target = target_map[key]
             error = pred - target
-            
+
             # Asymmetric MSE: penalize underestimates more
             mse = error ** 2
             underestimate_mask = (error < 0).float()  # pred < actual = missed degradation
             asymmetric_mse = mse * (1 + underestimate_mask * (self.penalty - 1))
-            
+
             total_loss += weight * asymmetric_mse.mean()
-        
+
+        # Confidence regularization: encourage high confidence when present.
+        # This ensures gradients flow through the confidence head during training.
+        if "confidence" in preds:
+            conf = preds["confidence"]
+            total_loss = total_loss + 0.01 * (1.0 - conf).mean()
+
         return total_loss

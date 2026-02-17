@@ -1,7 +1,7 @@
 # services/traffic-steering/sdn_clients/opendaylight.py
 
 import httpx
-from typing import Optional
+
 
 class OpenDaylightClient:
     """
@@ -12,7 +12,7 @@ class OpenDaylightClient:
     - GET /restconf/operational/opendaylight-inventory:nodes
     - POST /restconf/operations/sal-flow:add-flow
     """
-    
+
     def __init__(self, base_url: str, username: str = "admin", password: str = "admin"):
         self.base_url = base_url.rstrip("/")
         self.auth = (username, password)
@@ -53,10 +53,10 @@ class OpenDaylightClient:
                 )
                 if resp.status_code not in (200, 201):
                     return False
-            
+
             # Step 2: Verify flows are active
             await self._wait_for_flows_active(target_link, traffic_classes)
-            
+
             # Step 3: Remove old flows
             for tc in traffic_classes:
                 await client.delete(
@@ -65,7 +65,7 @@ class OpenDaylightClient:
                     f"/flow/pathwise-{tc}-{source_link}",
                     headers=self.headers,
                 )
-            
+
             return True
 
     async def get_topology(self) -> dict:

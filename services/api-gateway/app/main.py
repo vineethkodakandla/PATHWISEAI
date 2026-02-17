@@ -1,10 +1,11 @@
 # services/api-gateway/app/main.py
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.routers import telemetry, predictions, steering, sandbox, policies
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import policies, predictions, sandbox, steering, telemetry
 from app.websocket.scoreboard import ScoreboardManager
 
 scoreboard = ScoreboardManager(redis_url="redis://redis:6379")
@@ -44,5 +45,5 @@ async def scoreboard_ws(ws):
     try:
         while True:
             await ws.receive_text()  # Keep connection alive
-    except:
+    except Exception:
         await scoreboard.disconnect(ws)

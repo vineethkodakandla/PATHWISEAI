@@ -1,13 +1,12 @@
 # services/telemetry-ingestion/collector.py
 
 import asyncio
-import time
 import logging
 import random
-import struct
-import socket
+import time
 from dataclasses import dataclass
 from typing import Optional
+
 import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
@@ -71,8 +70,13 @@ class TelemetryCollector:
         """Actual SNMP collection using pysnmp."""
         try:
             from pysnmp.hlapi.asyncio import (
-                getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-                ContextData, ObjectType, ObjectIdentity,
+                CommunityData,
+                ContextData,
+                ObjectIdentity,
+                ObjectType,
+                SnmpEngine,
+                UdpTransportTarget,
+                getCmd,
             )
 
             # OIDs for interface counters (ifIndex=1)

@@ -1,9 +1,9 @@
 # services/telemetry-ingestion/parsers/snmp_parser.py
 
-import time
 import logging
-from typing import Optional
+import time
 from dataclasses import dataclass
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 

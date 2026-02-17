@@ -1,7 +1,6 @@
 # services/traffic-steering/sdn_clients/base.py
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class SDNClientBase(ABC):

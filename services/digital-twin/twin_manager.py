@@ -1,12 +1,18 @@
 # services/digital-twin/twin_manager.py
 
 import asyncio
-import json
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-from mininet_topology import MininetTopologyBuilder
-from batfish_validator import BatfishValidator
+
+try:
+    from batfish_validator import PYBATFISH_AVAILABLE, BatfishValidator
+    from mininet_topology import MININET_AVAILABLE, MininetTopologyBuilder
+    _DEPS_AVAILABLE = MININET_AVAILABLE and PYBATFISH_AVAILABLE
+except ImportError:
+    _DEPS_AVAILABLE = False
+    MininetTopologyBuilder = None  # type: ignore[assignment,misc]
+    BatfishValidator = None  # type: ignore[assignment,misc]
 
 class ValidationResult(Enum):
     PASS = "pass"
@@ -40,6 +46,11 @@ class DigitalTwinManager:
     """
 
     def __init__(self):
+        if not _DEPS_AVAILABLE:
+            raise ImportError(
+                "Mininet and/or pybatfish are not installed. "
+                "Run inside the digital-twin Docker container."
+            )
         self.topology_builder = MininetTopologyBuilder()
         self.batfish = BatfishValidator()
         self._active_sandbox = None
@@ -54,24 +65,24 @@ class DigitalTwinManager:
         import time
         start = time.monotonic()
         topo = None
-        
+
         try:
             # Step 1: Build virtual topology matching production
             topo = self.topology_builder.build_from_production(current_topology)
-            
+
             # Step 2: Apply current flow rules
             self.topology_builder.apply_flows(topo, current_flows)
-            
+
             # Step 3: Apply proposed change
             proposed_flows = self._generate_proposed_flows(decision, current_flows)
             self.topology_builder.apply_flows(topo, proposed_flows)
-            
+
             # Step 4: Batfish static analysis
             batfish_result = await self.batfish.analyze(
                 topology=current_topology,
                 proposed_flows=proposed_flows,
             )
-            
+
             if not batfish_result["loop_free"]:
                 return SandboxReport(
                     result=ValidationResult.FAIL_LOOP_DETECTED,
@@ -81,7 +92,7 @@ class DigitalTwinManager:
                     reachability_verified=False,
                     execution_time_ms=(time.monotonic() - start) * 1000,
                 )
-            
+
             if not batfish_result["policy_compliant"]:
                 return SandboxReport(
                     result=ValidationResult.FAIL_POLICY_VIOLATION,
@@ -91,15 +102,15 @@ class DigitalTwinManager:
                     reachability_verified=False,
                     execution_time_ms=(time.monotonic() - start) * 1000,
                 )
-            
+
             # Step 5: Mininet live traffic test
             reachability = await asyncio.wait_for(
                 self.topology_builder.test_reachability(topo),
                 timeout=3.0,  # 3 second timeout for traffic test
             )
-            
+
             elapsed = (time.monotonic() - start) * 1000
-            
+
             return SandboxReport(
                 result=ValidationResult.PASS if reachability else ValidationResult.FAIL_UNREACHABLE,
                 details="All validations passed" if reachability else "Reachability test failed",
@@ -109,7 +120,7 @@ class DigitalTwinManager:
                 execution_time_ms=elapsed,
                 topology_snapshot=current_topology,
             )
-        
+
         except asyncio.TimeoutError:
             return SandboxReport(
                 result=ValidationResult.FAIL_TIMEOUT,
@@ -133,7 +144,7 @@ class DigitalTwinManager:
             proposed.append({
                 "switch_id": "s1",
                 "priority": 200,
-                "match": f"ip,nw_proto=6",
+                "match": "ip,nw_proto=6",
                 "actions": f"output:{self._link_to_port(decision.target_link)}",
             })
 

@@ -1,11 +1,12 @@
 # services/api-gateway/app/routers/sandbox.py
 
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import Optional
-import redis.asyncio as redis
 import json
 import uuid
+from typing import Optional
+
+import redis.asyncio as redis
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 from app.config import get_settings
 
