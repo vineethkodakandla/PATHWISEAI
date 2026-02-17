@@ -42,7 +42,7 @@ async def prediction_loop():
     """
     Continuous prediction: every second, fetch latest 60 telemetry
     points per link, run inference, publish predictions.
-    
+
     This runs as a background coroutine, not triggered by HTTP.
     """
     while True:
@@ -104,7 +104,7 @@ def compute_health_score(preds: dict, confidence: torch.Tensor) -> float:
     - Latency: <30ms = 100, >200ms = 0  (weight: 0.4)
     - Jitter: <5ms = 100, >50ms = 0     (weight: 0.3)
     - Packet Loss: <0.1% = 100, >5% = 0 (weight: 0.3)
-    
+
     Averaged over the 30-second horizon, scaled by confidence.
     """
     lat = preds["latency"][0].mean().item()

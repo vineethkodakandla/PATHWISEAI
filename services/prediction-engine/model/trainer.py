@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from .lstm_network import PathWiseLoss
+from .lstm_network import PathWiseLoss, PathWiseLSTM
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class LSTMTrainer:
 
     def __init__(
         self,
-        model: "PathWiseLSTM",
+        model: PathWiseLSTM,
         lr: float = 1e-3,
         weight_decay: float = 1e-4,
         batch_size: int = 256,

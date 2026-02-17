@@ -7,7 +7,7 @@ import torch.nn as nn
 class PathWiseLSTM(nn.Module):
     """
     Multi-output LSTM for network telemetry forecasting.
-    
+
     Architecture rationale:
     - 2-layer stacked LSTM: captures both short-term jitter patterns
       and longer-term degradation trends without excessive depth.

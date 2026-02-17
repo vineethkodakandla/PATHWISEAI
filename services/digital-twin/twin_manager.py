@@ -3,7 +3,6 @@
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 try:
     from batfish_validator import PYBATFISH_AVAILABLE, BatfishValidator
@@ -29,19 +28,19 @@ class SandboxReport:
     policy_compliant: bool
     reachability_verified: bool
     execution_time_ms: float
-    topology_snapshot: Optional[dict] = None
+    topology_snapshot: dict | None = None
 
 class DigitalTwinManager:
     """
     Orchestrates the validation pipeline:
-    
+
     1. Snapshot current production topology
     2. Replicate in Mininet virtual network
     3. Apply proposed routing change
     4. Run Batfish analysis (loop detection, policy compliance)
     5. Run Mininet traffic test (actual packet forwarding)
     6. Return pass/fail with detailed report
-    
+
     Target: Complete validation in <5 seconds (PVD quality requirement).
     """
 
@@ -57,7 +56,7 @@ class DigitalTwinManager:
 
     async def validate_steering_decision(
         self,
-        decision: "SteeringDecision",
+        decision: "SteeringDecision",  # noqa: F821
         current_topology: dict,
         current_flows: list[dict],
     ) -> SandboxReport:
@@ -121,7 +120,7 @@ class DigitalTwinManager:
                 topology_snapshot=current_topology,
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return SandboxReport(
                 result=ValidationResult.FAIL_TIMEOUT,
                 details="Sandbox validation exceeded 5-second timeout",

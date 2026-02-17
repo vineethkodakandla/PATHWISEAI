@@ -2,14 +2,15 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "services" / "prediction-engine"))
 
-import pytest
 import numpy as np
 import torch
-from model.lstm_network import PathWiseLSTM
+
 from model.feature_engineering import FeatureEngineer
 from model.inference import InferenceEngine
+from model.lstm_network import PathWiseLSTM
 
 
 class TestPredictionPipeline:

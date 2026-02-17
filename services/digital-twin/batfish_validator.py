@@ -15,7 +15,7 @@ class BatfishValidator:
     - Routing loop detection
     - ACL/firewall policy compliance verification
     - Reachability analysis without live traffic
-    
+
     Batfish analyzes configs statically (no live network needed),
     making it fast enough for the <5 second validation budget.
     """
@@ -26,7 +26,7 @@ class BatfishValidator:
     async def analyze(self, topology: dict, proposed_flows: list[dict]) -> dict:
         """
         Run Batfish analysis on proposed configuration.
-        
+
         Returns:
             {
                 "loop_free": bool,

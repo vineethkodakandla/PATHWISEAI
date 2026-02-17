@@ -1,6 +1,5 @@
 # services/prediction-engine/model/feature_engineering.py
 
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -9,10 +8,10 @@ import pandas as pd
 class FeatureEngineer:
     """
     Transforms raw telemetry into LSTM-ready feature sequences.
-    
+
     Input window:  60 data points (60 seconds at 1Hz)
     Output horizon: 30-60 seconds ahead (configurable)
-    
+
     Feature set per timestep (13 features):
       - Raw: latency, jitter, packet_loss, bandwidth_util, rtt
       - Rolling 30s: mean_latency, std_latency, mean_jitter
@@ -49,10 +48,10 @@ class FeatureEngineer:
 
     def create_sequences(
         self, df: pd.DataFrame
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Create sliding-window sequences for LSTM training.
-        
+
         Returns:
             X: (num_samples, WINDOW_SIZE, NUM_FEATURES)
             y: (num_samples, HORIZON, 3)  # predict latency, jitter, packet_loss

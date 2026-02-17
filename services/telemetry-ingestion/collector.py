@@ -5,7 +5,6 @@ import logging
 import random
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import redis.asyncio as redis
 
@@ -21,9 +20,9 @@ class TelemetryPoint:
     bandwidth_utilization_pct: float
     rtt_ms: float
     # Derived features added during feature engineering
-    latency_rolling_mean_30s: Optional[float] = None
-    jitter_ema_alpha05: Optional[float] = None
-    packet_loss_rate_of_change: Optional[float] = None
+    latency_rolling_mean_30s: float | None = None
+    jitter_ema_alpha05: float | None = None
+    packet_loss_rate_of_change: float | None = None
 
 
 class TelemetryCollector:

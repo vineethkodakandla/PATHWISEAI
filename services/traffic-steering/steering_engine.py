@@ -27,14 +27,14 @@ class SteeringEngine:
     """
     Decision engine that consumes predictions and determines
     optimal traffic placement across available WAN links.
-    
+
     Decision logic:
     1. If any link health_score < CRITICAL_THRESHOLD (30): emergency failover
     2. If any link health_score < WARNING_THRESHOLD (50) and confidence > 0.7:
        preemptive shift to the highest-scoring alternative
     3. If score variance across links > REBALANCE_THRESHOLD: rebalance
     4. Otherwise: hold
-    
+
     ALL preemptive shifts go through Digital Twin validation first.
     Emergency failovers execute immediately but are validated post-hoc.
     """
@@ -105,7 +105,7 @@ class SteeringEngine:
     async def execute(self, decision: SteeringDecision):
         """
         Execute a steering decision via the SDN controller.
-        
+
         For hitless handoff:
         1. Install new flow rules on target path FIRST (make-before-break)
         2. Update priority so new path is preferred

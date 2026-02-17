@@ -12,7 +12,7 @@ except ImportError:
 class MininetTopologyBuilder:
     """
     Builds Mininet virtual networks that mirror production topology.
-    
+
     Design:
     - Each WAN link becomes a Mininet link with tc-based QoS emulation
     - SDN switches use OVSSwitch with OpenFlow 1.3

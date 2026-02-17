@@ -2,7 +2,6 @@
 
 import json
 import uuid
-from typing import Optional
 
 import redis.asyncio as redis
 from fastapi import APIRouter
@@ -20,7 +19,7 @@ class SandboxValidationRequest(BaseModel):
     source_link: str
     target_link: str
     traffic_classes: list[str]
-    topology_override: Optional[dict] = None
+    topology_override: dict | None = None
 
 
 class SandboxReportResponse(BaseModel):

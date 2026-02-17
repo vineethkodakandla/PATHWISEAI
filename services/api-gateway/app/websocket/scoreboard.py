@@ -11,7 +11,7 @@ class ScoreboardManager:
     """
     Pushes real-time health scores to connected dashboard clients
     via WebSocket at 1Hz update rate.
-    
+
     Data per link:
     - Current health score (0-100)
     - Predicted score in 30s / 60s

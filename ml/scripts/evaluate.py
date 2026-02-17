@@ -1,8 +1,8 @@
 # ml/scripts/evaluate.py
 
-import sys
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.prediction_engine_pkg.model.lstm_network import PathWiseLSTM
 from services.prediction_engine_pkg.model.feature_engineering import FeatureEngineer
+from services.prediction_engine_pkg.model.lstm_network import PathWiseLSTM
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ def compute_health_from_targets(targets: torch.Tensor) -> torch.Tensor:
 def evaluate_model(model, test_loader):
     """
     Evaluation metrics for PVD compliance:
-    
+
     1. MSE <= threshold (PVD: >=90% accuracy measured by MSE)
     2. Per-metric MAE (latency, jitter, packet_loss)
     3. Brownout detection rate (recall for degradation events)
@@ -65,36 +65,36 @@ def evaluate_model(model, test_loader):
         "brownout_recall": [],
         "false_positive_rate": [],
     }
-    
+
     model.eval()
     with torch.no_grad():
         for X, y in test_loader:
             preds, confidence = model(X)
-            
+
             # Per-metric MSE
             for i, key in enumerate(["latency", "jitter", "packet_loss"]):
                 mse = ((preds[key] - y[:, :, i]) ** 2).mean().item()
                 mae = (preds[key] - y[:, :, i]).abs().mean().item()
                 metrics[f"mse_{key}"].append(mse)
                 metrics[f"mae_{key}"].append(mae)
-            
+
             # Brownout detection: did we predict score < 50 when actual < 50?
             actual_health = compute_health_from_targets(y)
             predicted_health = compute_health_from_preds(preds)
-            
+
             true_brownouts = actual_health < 50
             predicted_brownouts = predicted_health < 50
-            
+
             if true_brownouts.any():
                 recall = (predicted_brownouts & true_brownouts).sum() / true_brownouts.sum()
                 metrics["brownout_recall"].append(recall.item())
-            
+
             false_positives = (predicted_brownouts & ~true_brownouts).sum()
             total_non_brownouts = (~true_brownouts).sum()
             if total_non_brownouts > 0:
                 fpr = false_positives / total_non_brownouts
                 metrics["false_positive_rate"].append(fpr.item())
-    
+
     return {k: np.mean(v) if v else 0.0 for k, v in metrics.items()}
 
 

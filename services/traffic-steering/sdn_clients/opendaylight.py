@@ -6,7 +6,7 @@ import httpx
 class OpenDaylightClient:
     """
     Integration with OpenDaylight SDN Controller via RESTCONF API.
-    
+
     Key endpoints used:
     - GET/PUT /restconf/config/opendaylight-inventory:nodes/node/{id}/flow-node-inventory:table/{table}/flow/{flow}
     - GET /restconf/operational/opendaylight-inventory:nodes
@@ -30,7 +30,7 @@ class OpenDaylightClient:
     ) -> bool:
         """
         Make-before-break hitless handoff:
-        
+
         Step 1: Install new higher-priority flow on target link
         Step 2: Wait for flow to be confirmed active (flow stats show hits)
         Step 3: Remove old flow on source link

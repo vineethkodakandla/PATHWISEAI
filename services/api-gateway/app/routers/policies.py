@@ -1,7 +1,6 @@
 # services/api-gateway/app/routers/policies.py
 
 import re
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -15,22 +14,22 @@ class PolicyRule(BaseModel):
     name: str
     traffic_class: str
     priority: int
-    bandwidth_guarantee_mbps: Optional[float]
-    latency_max_ms: Optional[float]
+    bandwidth_guarantee_mbps: float | None
+    latency_max_ms: float | None
     action: str  # "prioritize", "throttle", "block", "redirect"
     target_links: list[str]
 
 class IntentParser:
     """
     Rule-based + pattern matching NLP parser for network intents.
-    
+
     For an academic project, a rule-based approach is more appropriate than
     a full LLM integration because:
     1. Deterministic and auditable (critical for network safety)
     2. No external API dependency
     3. Easier to test and validate exhaustively
     4. Can be extended incrementally
-    
+
     Supported intent patterns:
     - "Prioritize {traffic} over {traffic}"
     - "Block {traffic} on {link}"
@@ -182,7 +181,7 @@ intent_parser = IntentParser()
 async def apply_intent(request: IntentRequest):
     """
     Parse a natural language network policy intent and apply it.
-    
+
     Example: POST /api/v1/policies/intent
     Body: {"intent": "Prioritize medical imaging traffic over guest WiFi"}
     """

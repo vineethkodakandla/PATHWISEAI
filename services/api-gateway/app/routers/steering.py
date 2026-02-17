@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Optional
 
 import redis.asyncio as redis
 from fastapi import APIRouter
@@ -23,7 +22,7 @@ class SteeringRequest(BaseModel):
     source_link: str
     target_link: str
     traffic_classes: list[str]
-    reason: Optional[str] = "Manual steering request"
+    reason: str | None = "Manual steering request"
 
 
 class SteeringResponse(BaseModel):

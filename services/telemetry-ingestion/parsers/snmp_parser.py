@@ -3,7 +3,6 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class SNMPParser:
 
     def parse_counters(
         self, device_id: str, if_index: int, raw_values: dict
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Convert raw SNMP counter values to rate-based metrics.
 
