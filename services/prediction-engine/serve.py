@@ -1,6 +1,9 @@
 # services/prediction-engine/serve.py
 
 import asyncio
+import json
+import os
+import time
 from contextlib import asynccontextmanager
 
 import numpy as np
@@ -12,35 +15,45 @@ from model.feature_engineering import FeatureEngineer
 from model.lstm_network import PathWiseLSTM
 
 # Global state
-model: PathWiseLSTM = None
-feature_eng: FeatureEngineer = None
-redis_client: redis.Redis = None
+model: PathWiseLSTM | None = None
+feature_eng: FeatureEngineer | None = None
+redis_client: redis.Redis | None = None
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+CHECKPOINT = os.getenv("MODEL_PATH", "checkpoints/best_model.pt")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model, feature_eng, redis_client
 
-    # Load model
+    # Load model — use random weights if no checkpoint exists yet
     model = PathWiseLSTM()
-    checkpoint = torch.load("checkpoints/best_model.pt", map_location="cpu")
-    model.load_state_dict(checkpoint["model_state_dict"])
+    if os.path.exists(CHECKPOINT):
+        checkpoint = torch.load(CHECKPOINT, map_location="cpu")
+        model.load_state_dict(checkpoint["model_state_dict"])
+        print(f"Loaded checkpoint from {CHECKPOINT}")
+    else:
+        print(f"No checkpoint at {CHECKPOINT} — running with untrained weights")
     model.eval()
 
     feature_eng = FeatureEngineer()
-    redis_client = redis.from_url("redis://redis:6379")
+    redis_client = redis.from_url(REDIS_URL)
 
     # Start background prediction loop
     asyncio.create_task(prediction_loop())
 
     yield
 
-    await redis_client.close()
+    await redis_client.aclose()
+
 
 app = FastAPI(title="PathWise Prediction Engine", lifespan=lifespan)
 
+
 async def prediction_loop():
     """
-    Continuous prediction: every second, fetch latest 60 telemetry
+    Continuous prediction: every second, fetch latest telemetry
     points per link, run inference, publish predictions.
 
     This runs as a background coroutine, not triggered by HTTP.
@@ -49,14 +62,15 @@ async def prediction_loop():
         try:
             # Get all active link IDs from Redis
             link_ids = await redis_client.smembers("active_links")
+            num_links = max(len(link_ids), 1)
+
+            # Fetch enough points to cover 60 per link across all links
+            raw_points = await redis_client.xrevrange(
+                "telemetry:raw", count=60 * num_links * 2
+            )
 
             for link_id_bytes in link_ids:
                 link_id = link_id_bytes.decode()
-
-                # Fetch last 60 telemetry points from Redis Stream
-                raw_points = await redis_client.xrevrange(
-                    "telemetry:raw", count=60
-                )
 
                 if len(raw_points) < 60:
                     continue  # Not enough data yet
@@ -75,13 +89,14 @@ async def prediction_loop():
                 health_score = compute_health_score(preds, confidence)
 
                 # Publish prediction to Redis for consumers
+                # Bug fix: use json.dumps() not list.__str__()
                 await redis_client.hset(f"prediction:{link_id}", mapping={
-                    "latency_forecast": preds["latency"][0].numpy().tolist().__str__(),
-                    "jitter_forecast": preds["jitter"][0].numpy().tolist().__str__(),
-                    "packet_loss_forecast": preds["packet_loss"][0].numpy().tolist().__str__(),
+                    "latency_forecast": json.dumps(preds["latency"][0].tolist()),
+                    "jitter_forecast": json.dumps(preds["jitter"][0].tolist()),
+                    "packet_loss_forecast": json.dumps(preds["packet_loss"][0].tolist()),
                     "confidence": float(confidence[0]),
                     "health_score": health_score,
-                    "timestamp": str(asyncio.get_event_loop().time()),
+                    "timestamp": str(time.time()),
                 })
 
                 # Publish event if degradation predicted

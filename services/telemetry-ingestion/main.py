@@ -52,7 +52,7 @@ async def main():
     r = redis.from_url(redis_url)
     for device in devices:
         await r.sadd("active_links", device.get("link_id", device["ip"]))
-    await r.close()
+    await r.aclose()
 
     logger.info(f"Starting telemetry collection (interval: {poll_interval}s)")
     await collector.run(devices)

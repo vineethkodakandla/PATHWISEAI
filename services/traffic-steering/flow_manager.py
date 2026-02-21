@@ -7,7 +7,7 @@ import logging
 import redis.asyncio as redis
 from sdn_clients.onos import ONOSClient
 from sdn_clients.opendaylight import OpenDaylightClient
-from steering_engine import SteeringDecision, SteeringEngine
+from steering_engine import SteeringAction, SteeringDecision, SteeringEngine
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +73,9 @@ class FlowManager:
     async def handle_manual_request(self, request: dict) -> bool:
         """Process a manual steering request from the API."""
         decision = SteeringDecision(
-            action=SteeringEngine.SteeringAction.PREEMPTIVE_SHIFT
+            action=SteeringAction.PREEMPTIVE_SHIFT
             if request.get("type") != "emergency"
-            else SteeringEngine.SteeringAction.EMERGENCY_FAILOVER,
+            else SteeringAction.EMERGENCY_FAILOVER,
             source_link=request["source_link"],
             target_link=request["target_link"],
             traffic_classes=json.loads(request.get("traffic_classes", "[]")),

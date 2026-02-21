@@ -264,8 +264,11 @@ class TelemetryCollector:
             ]
             points = await asyncio.gather(*tasks, return_exceptions=True)
             published = 0
-            for point in points:
+            for device, point in zip(devices, points):
                 if isinstance(point, TelemetryPoint):
+                    # Use friendly link_id from inventory (e.g. "fiber-primary")
+                    # instead of raw device IP so it matches active_links in Redis
+                    point.link_id = device.get("link_id", point.link_id)
                     await self.publish(point)
                     published += 1
                 elif isinstance(point, Exception):

@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_settings
 from app.routers import policies, predictions, sandbox, steering, telemetry
 from app.websocket.scoreboard import ScoreboardManager
 
-scoreboard = ScoreboardManager(redis_url="redis://redis:6379")
+scoreboard = ScoreboardManager(redis_url=get_settings().redis_url)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
