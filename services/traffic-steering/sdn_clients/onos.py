@@ -1,7 +1,6 @@
 # services/traffic-steering/sdn_clients/onos.py
 
 import httpx
-from typing import Optional
 
 
 class ONOSClient:

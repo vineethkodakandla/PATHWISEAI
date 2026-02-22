@@ -1,11 +1,11 @@
 # services/traffic-steering/steering_engine.py
 
-import asyncio
 import json
-import redis.asyncio as redis
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+
+import redis.asyncio as redis
+
 
 class SteeringAction(Enum):
     HOLD = "hold"               # No change needed
@@ -27,18 +27,18 @@ class SteeringEngine:
     """
     Decision engine that consumes predictions and determines
     optimal traffic placement across available WAN links.
-    
+
     Decision logic:
     1. If any link health_score < CRITICAL_THRESHOLD (30): emergency failover
     2. If any link health_score < WARNING_THRESHOLD (50) and confidence > 0.7:
        preemptive shift to the highest-scoring alternative
     3. If score variance across links > REBALANCE_THRESHOLD: rebalance
     4. Otherwise: hold
-    
+
     ALL preemptive shifts go through Digital Twin validation first.
     Emergency failovers execute immediately but are validated post-hoc.
     """
-    
+
     CRITICAL_THRESHOLD = 30
     WARNING_THRESHOLD = 50
     CONFIDENCE_THRESHOLD = 0.7
@@ -52,7 +52,7 @@ class SteeringEngine:
         """Evaluate all links and return steering decisions."""
         link_ids = await self.redis.smembers("active_links")
         link_scores = {}
-        
+
         for link_id_bytes in link_ids:
             link_id = link_id_bytes.decode()
             pred = await self.redis.hgetall(f"prediction:{link_id}")
@@ -61,13 +61,13 @@ class SteeringEngine:
                     "health_score": float(pred[b"health_score"]),
                     "confidence": float(pred[b"confidence"]),
                 }
-        
+
         decisions = []
         sorted_links = sorted(
             link_scores.items(), key=lambda x: x[1]["health_score"], reverse=True
         )
         best_link = sorted_links[0][0] if sorted_links else None
-        
+
         for link_id, scores in link_scores.items():
             if scores["health_score"] < self.CRITICAL_THRESHOLD:
                 # Emergency: execute immediately
@@ -81,7 +81,7 @@ class SteeringEngine:
                         reason=f"Link {link_id} health critical ({scores['health_score']})",
                         requires_sandbox_validation=False,  # Post-hoc validation
                     ))
-            
+
             elif (scores["health_score"] < self.WARNING_THRESHOLD
                   and scores["confidence"] > self.CONFIDENCE_THRESHOLD):
                 # Preemptive: validate first
@@ -99,13 +99,13 @@ class SteeringEngine:
                         ),
                         requires_sandbox_validation=True,
                     ))
-        
+
         return decisions
 
     async def execute(self, decision: SteeringDecision):
         """
         Execute a steering decision via the SDN controller.
-        
+
         For hitless handoff:
         1. Install new flow rules on target path FIRST (make-before-break)
         2. Update priority so new path is preferred
@@ -120,17 +120,17 @@ class SteeringEngine:
             "confidence": decision.confidence,
             "reason": decision.reason,
         }
-        
+
         if decision.requires_sandbox_validation:
             # Validate in Digital Twin first
             is_valid = await self.validate_in_sandbox(decision)
             audit_entry["sandbox_validated"] = is_valid
-            
+
             if not is_valid:
                 audit_entry["status"] = "blocked_by_sandbox"
                 await self.log_audit(audit_entry)
                 return False
-        
+
         # Execute make-before-break handoff
         success = await self.sdn_client.install_flow_rules(
             source_link=decision.source_link,
@@ -138,7 +138,7 @@ class SteeringEngine:
             traffic_classes=decision.traffic_classes,
             strategy="make-before-break",
         )
-        
+
         audit_entry["status"] = "executed" if success else "failed"
         await self.log_audit(audit_entry)
         return success

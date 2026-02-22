@@ -1,12 +1,12 @@
 # services/prediction-engine/model/inference.py
 
-import torch
-import numpy as np
-from typing import Optional
 from pathlib import Path
 
-from .lstm_network import PathWiseLSTM
+import numpy as np
+import torch
+
 from .feature_engineering import FeatureEngineer
+from .lstm_network import PathWiseLSTM
 
 
 class InferenceEngine:
@@ -22,7 +22,7 @@ class InferenceEngine:
 
     def __init__(self, model_path: str = "checkpoints/best_model.pt"):
         self.model_path = Path(model_path)
-        self.model: Optional[PathWiseLSTM] = None
+        self.model: PathWiseLSTM | None = None
         self.feature_eng = FeatureEngineer()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -38,7 +38,7 @@ class InferenceEngine:
         self.model.eval()
         return True
 
-    def predict(self, window: np.ndarray) -> Optional[dict]:
+    def predict(self, window: np.ndarray) -> dict | None:
         """
         Run inference on a single feature window.
 

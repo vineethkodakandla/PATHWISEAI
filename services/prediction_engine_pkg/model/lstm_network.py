@@ -1,5 +1,6 @@
 # Re-export from actual module
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "prediction-engine"))
-from model.lstm_network import *
+from model.lstm_network import PathWiseLoss, PathWiseLSTM  # noqa: F401, E402

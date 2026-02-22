@@ -1,11 +1,11 @@
 # services/api-gateway/app/routers/sandbox.py
 
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import Optional
-import redis.asyncio as redis
 import json
 import uuid
+
+import redis.asyncio as redis
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 from app.config import get_settings
 
@@ -19,7 +19,7 @@ class SandboxValidationRequest(BaseModel):
     source_link: str
     target_link: str
     traffic_classes: list[str]
-    topology_override: Optional[dict] = None
+    topology_override: dict | None = None
 
 
 class SandboxReportResponse(BaseModel):

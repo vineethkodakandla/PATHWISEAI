@@ -1,8 +1,8 @@
 # services/api-gateway/app/models/schemas.py
 
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
-from typing import Optional
-from enum import Enum
 
 
 class TelemetryPoint(BaseModel):
@@ -27,7 +27,7 @@ class PredictionResponse(BaseModel):
     timestamp: str
 
 
-class TrendDirection(str, Enum):
+class TrendDirection(StrEnum):
     IMPROVING = "improving"
     STABLE = "stable"
     DEGRADING = "degrading"
@@ -44,7 +44,7 @@ class LinkHealth(BaseModel):
     trend: TrendDirection
 
 
-class SteeringAction(str, Enum):
+class SteeringAction(StrEnum):
     HOLD = "hold"
     PREEMPTIVE_SHIFT = "shift"
     EMERGENCY_FAILOVER = "failover"
@@ -62,7 +62,7 @@ class SteeringDecisionSchema(BaseModel):
     requires_sandbox_validation: bool
 
 
-class ValidationResult(str, Enum):
+class ValidationResult(StrEnum):
     PASS = "pass"
     FAIL_LOOP_DETECTED = "fail_loop"
     FAIL_POLICY_VIOLATION = "fail_policy"
@@ -78,7 +78,7 @@ class SandboxReportSchema(BaseModel):
     policy_compliant: bool
     reachability_verified: bool
     execution_time_ms: float
-    topology_snapshot: Optional[dict] = None
+    topology_snapshot: dict | None = None
 
 
 class PolicyRuleSchema(BaseModel):
@@ -86,7 +86,7 @@ class PolicyRuleSchema(BaseModel):
     name: str
     traffic_class: str
     priority: int = Field(ge=0, le=65535)
-    bandwidth_guarantee_mbps: Optional[float] = None
-    latency_max_ms: Optional[float] = None
+    bandwidth_guarantee_mbps: float | None = None
+    latency_max_ms: float | None = None
     action: str
     target_links: list[str]

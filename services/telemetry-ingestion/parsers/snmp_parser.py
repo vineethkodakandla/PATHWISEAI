@@ -1,8 +1,7 @@
 # services/telemetry-ingestion/parsers/snmp_parser.py
 
-import time
 import logging
-from typing import Optional
+import time
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ class SNMPParser:
 
     def parse_counters(
         self, device_id: str, if_index: int, raw_values: dict
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Convert raw SNMP counter values to rate-based metrics.
 

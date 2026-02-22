@@ -2,14 +2,16 @@
 
 import asyncio
 import json
-from fastapi import WebSocket, WebSocketDisconnect
+
 import redis.asyncio as redis
+from fastapi import WebSocket, WebSocketDisconnect
+
 
 class ScoreboardManager:
     """
     Pushes real-time health scores to connected dashboard clients
     via WebSocket at 1Hz update rate.
-    
+
     Data per link:
     - Current health score (0-100)
     - Predicted score in 30s / 60s
@@ -36,12 +38,12 @@ class ScoreboardManager:
             try:
                 link_ids = await self.redis.smembers("active_links")
                 scoreboard_data = {}
-                
+
                 for link_id_bytes in link_ids:
                     link_id = link_id_bytes.decode()
                     pred = await self.redis.hgetall(f"prediction:{link_id}")
                     raw = await self.redis.xrevrange("telemetry:raw", count=1)
-                    
+
                     if pred:
                         scoreboard_data[link_id] = {
                             "health_score": float(pred.get(b"health_score", 0)),
@@ -52,13 +54,13 @@ class ScoreboardManager:
                             "latency_forecast": json.loads(pred.get(b"latency_forecast", b"[]")),
                             "trend": self._compute_trend(pred),
                         }
-                
+
                 message = json.dumps({
                     "type": "scoreboard_update",
                     "data": scoreboard_data,
                     "timestamp": asyncio.get_event_loop().time(),
                 })
-                
+
                 # Broadcast to all connected clients
                 disconnected = []
                 for ws in self.active_connections:
@@ -66,13 +68,13 @@ class ScoreboardManager:
                         await ws.send_text(message)
                     except WebSocketDisconnect:
                         disconnected.append(ws)
-                
+
                 for ws in disconnected:
                     self.active_connections.remove(ws)
-            
+
             except Exception as e:
                 print(f"Broadcast error: {e}")
-            
+
             await asyncio.sleep(1.0)
 
     def _get_latest_metric(self, raw_entries: list, metric_key: str) -> float:

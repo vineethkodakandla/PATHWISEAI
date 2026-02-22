@@ -1,8 +1,9 @@
 # services/api-gateway/app/routers/predictions.py
 
-from fastapi import APIRouter
 import json
+
 import redis.asyncio as redis
+from fastapi import APIRouter
 
 from app.config import get_settings
 

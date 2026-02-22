@@ -1,8 +1,9 @@
 # tests/conftest.py
 
-import sys
 import os
+import sys
 from pathlib import Path
+
 import pytest
 
 # Add project root and service directories to Python path

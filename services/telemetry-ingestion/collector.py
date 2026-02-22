@@ -1,13 +1,11 @@
 # services/telemetry-ingestion/collector.py
 
 import asyncio
-import time
 import logging
 import random
-import struct
-import socket
+import time
 from dataclasses import dataclass
-from typing import Optional
+
 import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
@@ -22,9 +20,9 @@ class TelemetryPoint:
     bandwidth_utilization_pct: float
     rtt_ms: float
     # Derived features added during feature engineering
-    latency_rolling_mean_30s: Optional[float] = None
-    jitter_ema_alpha05: Optional[float] = None
-    packet_loss_rate_of_change: Optional[float] = None
+    latency_rolling_mean_30s: float | None = None
+    jitter_ema_alpha05: float | None = None
+    packet_loss_rate_of_change: float | None = None
 
 
 class TelemetryCollector:
@@ -71,8 +69,13 @@ class TelemetryCollector:
         """Actual SNMP collection using pysnmp."""
         try:
             from pysnmp.hlapi.asyncio import (
-                getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-                ContextData, ObjectType, ObjectIdentity,
+                CommunityData,
+                ContextData,
+                ObjectIdentity,
+                ObjectType,
+                SnmpEngine,
+                UdpTransportTarget,
+                getCmd,
             )
 
             # OIDs for interface counters (ifIndex=1)
@@ -261,8 +264,11 @@ class TelemetryCollector:
             ]
             points = await asyncio.gather(*tasks, return_exceptions=True)
             published = 0
-            for point in points:
+            for device, point in zip(devices, points):
                 if isinstance(point, TelemetryPoint):
+                    # Use friendly link_id from inventory (e.g. "fiber-primary")
+                    # instead of raw device IP so it matches active_links in Redis
+                    point.link_id = device.get("link_id", point.link_id)
                     await self.publish(point)
                     published += 1
                 elif isinstance(point, Exception):

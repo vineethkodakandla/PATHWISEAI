@@ -8,11 +8,11 @@ and publishes results back.
 """
 
 import asyncio
-import os
 import json
 import logging
-import redis.asyncio as redis
+import os
 
+import redis.asyncio as redis
 from twin_manager import DigitalTwinManager
 
 logging.basicConfig(

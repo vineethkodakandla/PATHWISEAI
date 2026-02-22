@@ -1,11 +1,12 @@
 # services/prediction-engine/model/trainer.py
 
+import logging
+from pathlib import Path
+
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from pathlib import Path
-import logging
 
-from .lstm_network import PathWiseLoss
+from .lstm_network import PathWiseLoss, PathWiseLSTM
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class LSTMTrainer:
 
     def __init__(
         self,
-        model: "PathWiseLSTM",
+        model: PathWiseLSTM,
         lr: float = 1e-3,
         weight_decay: float = 1e-4,
         batch_size: int = 256,
@@ -34,10 +35,10 @@ class LSTMTrainer:
         self.patience = patience
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
-        
+
         self.optimizer = torch.optim.AdamW(
             model.parameters(), lr=lr, weight_decay=weight_decay
         )
@@ -59,11 +60,11 @@ class LSTMTrainer:
         val_loader = DataLoader(
             val_ds, batch_size=self.batch_size, shuffle=False
         )
-        
+
         best_val_loss = float("inf")
         epochs_no_improve = 0
         history = {"train_loss": [], "val_loss": []}
-        
+
         for epoch in range(self.max_epochs):
             # --- Training ---
             self.model.train()
@@ -71,7 +72,7 @@ class LSTMTrainer:
             for X_batch, y_batch in train_loader:
                 X_batch = X_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
-                
+
                 self.optimizer.zero_grad()
                 preds, confidence = self.model(X_batch)
                 loss = self.criterion(preds, y_batch)
@@ -79,9 +80,9 @@ class LSTMTrainer:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 self.optimizer.step()
                 train_loss += loss.item()
-            
+
             train_loss /= len(train_loader)
-            
+
             # --- Validation ---
             self.model.eval()
             val_loss = 0.0
@@ -93,17 +94,17 @@ class LSTMTrainer:
                     loss = self.criterion(preds, y_batch)
                     val_loss += loss.item()
             val_loss /= len(val_loader)
-            
+
             self.scheduler.step(val_loss)
             history["train_loss"].append(train_loss)
             history["val_loss"].append(val_loss)
-            
+
             logger.info(
                 f"Epoch {epoch+1}/{self.max_epochs} | "
                 f"Train: {train_loss:.6f} | Val: {val_loss:.6f} | "
                 f"LR: {self.optimizer.param_groups[0]['lr']:.2e}"
             )
-            
+
             # Checkpoint best model
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -119,5 +120,5 @@ class LSTMTrainer:
                 if epochs_no_improve >= self.patience:
                     logger.info(f"Early stopping at epoch {epoch+1}")
                     break
-        
+
         return history

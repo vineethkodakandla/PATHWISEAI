@@ -1,9 +1,9 @@
 # services/api-gateway/app/middleware/auth.py
 
-from fastapi import Request, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Optional
 import logging
+
+from fastapi import HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.role = role
         return await call_next(request)
 
-    def _get_route_category(self, path: str) -> Optional[str]:
+    def _get_route_category(self, path: str) -> str | None:
         """Extract the API category from the request path."""
         parts = path.strip("/").split("/")
         if len(parts) >= 3 and parts[0] == "api" and parts[1] == "v1":

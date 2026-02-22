@@ -1,9 +1,11 @@
 # ml/scripts/generate_synthetic_data.py
 
-import numpy as np
-import pandas as pd
 import argparse
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 
 def generate_link_telemetry(
     link_id: str,
@@ -19,32 +21,32 @@ def generate_link_telemetry(
     """
     n_points = (duration_hours * 3600) // interval_sec
     timestamps = pd.date_range(start="2026-01-01", periods=n_points, freq=f"{interval_sec}s")
-    
+
     # Diurnal pattern (peak at 10am and 2pm local time)
     hour_of_day = timestamps.hour + timestamps.minute / 60.0
     diurnal = 0.3 * np.sin(2 * np.pi * (hour_of_day - 6) / 24) + 0.7
-    
+
     # Base metrics with noise
     base_latency = 15 + 10 * diurnal + np.random.normal(0, 2, n_points)
     base_jitter = 1 + 3 * diurnal + np.random.normal(0, 0.5, n_points)
     base_loss = np.clip(0.01 + 0.05 * diurnal + np.random.normal(0, 0.01, n_points), 0, 100)
     base_bw = np.clip(30 + 40 * diurnal + np.random.normal(0, 5, n_points), 0, 100)
     base_rtt = base_latency * 2 + np.random.normal(0, 1, n_points)
-    
+
     # Inject brownout events (gradual degradation over 30-120 seconds)
     brownout_mask = np.random.random(n_points) < brownout_probability
     brownout_starts = np.where(brownout_mask)[0]
-    
+
     for start in brownout_starts:
         duration = np.random.randint(30, 120)
         end = min(start + duration, n_points)
         ramp = np.linspace(0, 1, end - start)
         severity = np.random.uniform(2, 8)  # multiplier
-        
+
         base_latency[start:end] += severity * 20 * ramp
         base_jitter[start:end] += severity * 5 * ramp
         base_loss[start:end] += severity * 2 * ramp
-    
+
     df = pd.DataFrame({
         "time": timestamps,
         "link_id": link_id,
@@ -54,7 +56,7 @@ def generate_link_telemetry(
         "bandwidth_util_pct": np.clip(base_bw, 0, 100),
         "rtt_ms": np.clip(base_rtt, 0, None),
     })
-    
+
     return df
 
 # Generate for multiple link types

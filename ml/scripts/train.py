@@ -1,19 +1,18 @@
 # ml/scripts/train.py
 
-import sys
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import torch
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from services.prediction_engine_pkg.model.lstm_network import PathWiseLSTM
 from services.prediction_engine_pkg.model.feature_engineering import FeatureEngineer
+from services.prediction_engine_pkg.model.lstm_network import PathWiseLSTM
 from services.prediction_engine_pkg.model.trainer import LSTMTrainer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

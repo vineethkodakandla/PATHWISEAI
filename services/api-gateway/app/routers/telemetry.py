@@ -1,8 +1,7 @@
 # services/api-gateway/app/routers/telemetry.py
 
-from fastapi import APIRouter, Query
-from typing import Optional
 import redis.asyncio as redis
+from fastapi import APIRouter, Query
 
 from app.config import get_settings
 
@@ -33,8 +32,11 @@ async def get_telemetry(
 
     Returns the most recent data points within the specified window.
     """
+    # The stream is shared across all links; fetch enough entries to
+    # guarantee `limit` points per link (num_links × limit × 2 for safety).
+    num_links = max(await redis_client.scard("active_links"), 1)
     raw_points = await redis_client.xrevrange(
-        "telemetry:raw", count=limit
+        "telemetry:raw", count=limit * num_links * 2
     )
 
     data_points = []
@@ -48,6 +50,8 @@ async def get_telemetry(
                 "bandwidth_util_pct": float(fields.get(b"bandwidth_util_pct", 0)),
                 "rtt_ms": float(fields.get(b"rtt_ms", 0)),
             })
+            if len(data_points) >= limit:
+                break
 
     return {
         "link_id": link_id,

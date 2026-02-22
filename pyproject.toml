@@ -26,6 +26,20 @@ line-length = 100
 select = ["E", "F", "W", "I", "N", "UP"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# ML scripts use uppercase X/y by convention (scikit-learn / numpy style)
+"ml/scripts/*.py" = ["N806", "N803", "N999"]
+# Test files use uppercase X/y for feature matrices
+"tests/**/*.py" = ["N806", "N803"]
+# Prediction-engine model uses ML naming conventions (uppercase X/y)
+"services/prediction-engine/model/*.py" = ["N806", "N803"]
+# Re-export shims use module-level path manipulation before imports
+"services/prediction_engine_pkg/**/*.py" = ["N999", "E402"]
+# Service folders have hyphens in their names (N999 is a false-positive on directory scan)
+"services/*/**.py" = ["N999"]
+# gNMI is a proper protocol name, CapWords rule doesn't apply
+"services/telemetry-ingestion/parsers/streaming_telemetry.py" = ["N801"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["app", "model", "services"]
 

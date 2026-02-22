@@ -1,9 +1,9 @@
 # services/api-gateway/app/routers/policies.py
 
-from fastapi import APIRouter, WebSocket, Depends
-from pydantic import BaseModel
 import re
-from typing import Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/policies", tags=["IBN"])
 
@@ -14,22 +14,22 @@ class PolicyRule(BaseModel):
     name: str
     traffic_class: str
     priority: int
-    bandwidth_guarantee_mbps: Optional[float]
-    latency_max_ms: Optional[float]
+    bandwidth_guarantee_mbps: float | None
+    latency_max_ms: float | None
     action: str  # "prioritize", "throttle", "block", "redirect"
     target_links: list[str]
 
 class IntentParser:
     """
     Rule-based + pattern matching NLP parser for network intents.
-    
+
     For an academic project, a rule-based approach is more appropriate than
     a full LLM integration because:
     1. Deterministic and auditable (critical for network safety)
     2. No external API dependency
     3. Easier to test and validate exhaustively
     4. Can be extended incrementally
-    
+
     Supported intent patterns:
     - "Prioritize {traffic} over {traffic}"
     - "Block {traffic} on {link}"
@@ -49,7 +49,7 @@ class IntentParser:
         r"web|browsing|http": "web_browsing",
         r"streaming|netflix|youtube": "streaming",
     }
-    
+
     INTENT_PATTERNS = [
         (r"prioritize\s+(.+?)\s+over\s+(.+)", "prioritize"),
         (r"block\s+(.+?)\s+on\s+(.+)", "block"),
@@ -63,7 +63,7 @@ class IntentParser:
         """Parse natural language intent into structured policy rules."""
         text = intent_text.lower().strip()
         rules = []
-        
+
         for pattern, action_type in self.INTENT_PATTERNS:
             match = re.search(pattern, text)
             if match:
@@ -88,7 +88,7 @@ class IntentParser:
                         action="throttle",
                         target_links=["all"],
                     ))
-                
+
                 elif action_type == "guarantee_bw":
                     bw = float(match.group(1))
                     tc = self._resolve_traffic_class(match.group(2))
@@ -155,14 +155,14 @@ class IntentParser:
                     ))
 
                 break
-        
+
         if not rules:
             raise ValueError(
                 f"Could not parse intent: '{intent_text}'. "
                 f"Try formats like: 'Prioritize VoIP over guest WiFi', "
                 f"'Guarantee 50Mbps for video conferencing'"
             )
-        
+
         return rules
 
     def _resolve_traffic_class(self, text: str) -> str:
@@ -181,17 +181,20 @@ intent_parser = IntentParser()
 async def apply_intent(request: IntentRequest):
     """
     Parse a natural language network policy intent and apply it.
-    
+
     Example: POST /api/v1/policies/intent
     Body: {"intent": "Prioritize medical imaging traffic over guest WiFi"}
     """
-    rules = intent_parser.parse(request.intent)
-    
+    try:
+        rules = intent_parser.parse(request.intent)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     # Validate in sandbox before applying
     validation_results = []
     for rule in rules:
         validation_results.append({"rule": rule.name, "validated": True})
-    
+
     return {
         "status": "applied",
         "intent": request.intent,

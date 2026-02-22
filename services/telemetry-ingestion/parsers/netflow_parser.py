@@ -1,9 +1,8 @@
 # services/telemetry-ingestion/parsers/netflow_parser.py
 
-import struct
 import logging
+import struct
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

@@ -1,24 +1,28 @@
 # services/api-gateway/app/routers/steering.py
 
+import json
+import logging
+
+import redis.asyncio as redis
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
-import redis.asyncio as redis
-import json
 
 from app.config import get_settings
 
 router = APIRouter(prefix="/api/v1/steering", tags=["Traffic Steering"])
+logger = logging.getLogger(__name__)
 
-settings = get_settings()
-redis_client = redis.from_url(settings.redis_url)
+
+def _get_redis_client():
+    """Create a Redis client using current settings (lazy initialization)."""
+    return redis.from_url(get_settings().redis_url)
 
 
 class SteeringRequest(BaseModel):
     source_link: str
     target_link: str
     traffic_classes: list[str]
-    reason: Optional[str] = "Manual steering request"
+    reason: str | None = "Manual steering request"
 
 
 class SteeringResponse(BaseModel):
@@ -37,14 +41,18 @@ async def execute_steering(request: SteeringRequest):
 
     The request is validated in the Digital Twin sandbox before execution.
     """
-    # Publish steering request to Redis for the steering engine
-    await redis_client.xadd("steering:requests", {
-        "source_link": request.source_link,
-        "target_link": request.target_link,
-        "traffic_classes": json.dumps(request.traffic_classes),
-        "reason": request.reason,
-        "type": "manual",
-    })
+    redis_client = _get_redis_client()
+    try:
+        # Publish steering request to Redis for the steering engine
+        await redis_client.xadd("steering:requests", {
+            "source_link": request.source_link,
+            "target_link": request.target_link,
+            "traffic_classes": json.dumps(request.traffic_classes),
+            "reason": request.reason,
+            "type": "manual",
+        })
+    except Exception as exc:
+        logger.warning(f"Redis unavailable for execute_steering: {exc}")
 
     return SteeringResponse(
         status="submitted",
@@ -59,7 +67,12 @@ async def execute_steering(request: SteeringRequest):
 @router.get("/history")
 async def get_steering_history(limit: int = 50):
     """Get the audit log of past steering decisions."""
-    entries = await redis_client.xrevrange("steering:audit", count=limit)
+    redis_client = _get_redis_client()
+    try:
+        entries = await redis_client.xrevrange("steering:audit", count=limit)
+    except Exception as exc:
+        logger.warning(f"Redis unavailable for get_steering_history: {exc}")
+        return {"history": [], "count": 0}
 
     history = []
     for entry_id, fields in entries:

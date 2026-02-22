@@ -1,9 +1,8 @@
 # services/telemetry-ingestion/parsers/streaming_telemetry.py
 
-import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +89,7 @@ class StreamingTelemetryParser:
 
     def process_updates(
         self, interface_name: str, updates: list[gNMIUpdate]
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Convert gNMI counter updates to rate-based telemetry metrics.
 
@@ -140,14 +139,14 @@ class StreamingTelemetryParser:
                 parts.append(name)
         return "/" + "/".join(parts) if parts else ""
 
-    def _extract_value(self, val_obj: dict) -> Optional[float]:
+    def _extract_value(self, val_obj: dict) -> float | None:
         """Extract numeric value from gNMI TypedValue."""
         for key in ("uintVal", "intVal", "floatVal", "doubleVal"):
             if key in val_obj:
                 return float(val_obj[key])
         return None
 
-    def _resolve_metric(self, path: str) -> Optional[str]:
+    def _resolve_metric(self, path: str) -> str | None:
         """Map a gNMI path to a known metric name."""
         for pattern, metric in self.PATH_MAPPING.items():
             if pattern in path:

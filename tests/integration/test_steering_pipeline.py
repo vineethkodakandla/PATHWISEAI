@@ -2,18 +2,18 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "services" / "traffic-steering"))
 
+
 import pytest
-import asyncio
-import json
 
 
 class TestSteeringPipeline:
     """
     Integration test: publish degradation alert -> steering engine
     picks it up -> validates in sandbox -> executes handoff.
-    
+
     These tests require Redis to be running.
     Set REDIS_URL environment variable or default to localhost.
     """

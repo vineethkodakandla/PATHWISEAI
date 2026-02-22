@@ -2,12 +2,13 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "services" / "traffic-steering"))
 
 import pytest
-from sdn_clients.opendaylight import OpenDaylightClient
-from sdn_clients.onos import ONOSClient
 from sdn_clients.base import SDNClientBase
+from sdn_clients.onos import ONOSClient
+from sdn_clients.opendaylight import OpenDaylightClient
 
 
 class TestSDNClientBase:
