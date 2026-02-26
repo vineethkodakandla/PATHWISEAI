@@ -1,95 +1,60 @@
-// frontend/src/types/index.ts
-// Shared TypeScript type definitions for the PathWise dashboard
+// PathWise AI v2 – Type Definitions
 
-export interface TelemetryPoint {
-  timestamp: number;
-  link_id: string;
+export type NetworkType = 'fiber' | 'broadband' | '5g' | 'satellite';
+export type TrendDirection = 'improving' | 'stable' | 'degrading';
+export type NetworkMode = 'lstm' | 'naive';
+
+export interface HistoryPoint {
+  t: number;
+  health_score: number;
+  latency_ms: number;
+}
+
+export interface NetworkMetrics {
+  id: string;
+  name: string;
+  type: NetworkType;
+  color: string;
+  icon: string;
   latency_ms: number;
   jitter_ms: number;
   packet_loss_pct: number;
-  bandwidth_util_pct: number;
-  rtt_ms: number;
-}
-
-export interface LinkHealth {
+  bandwidth_mbps: number;
   health_score: number;
-  confidence: number;
-  latency_current: number;
-  jitter_current: number;
-  packet_loss_current: number;
-  latency_forecast: number[];
+  congestion_pct: number;
+  signal_strength: number;
   trend: TrendDirection;
+  history: HistoryPoint[];
+  timestamp: number;
 }
-
-export type TrendDirection = 'improving' | 'stable' | 'degrading';
-
-export interface ScoreboardData {
-  [linkId: string]: LinkHealth;
-}
-
-export interface PredictionResponse {
-  link_id: string;
-  health_score: number;
-  confidence: number;
-  latency_forecast: number[];
-  jitter_forecast: number[];
-  packet_loss_forecast: number[];
-  timestamp: string;
-}
-
-export interface SteeringDecision {
-  action: SteeringAction;
-  source_link: string;
-  target_link: string;
-  traffic_classes: string[];
-  confidence: number;
-  reason: string;
-  requires_sandbox_validation: boolean;
-}
-
-export type SteeringAction = 'hold' | 'shift' | 'failover' | 'rebalance';
 
 export interface SteeringEvent {
-  id: string;
-  action: string;
-  source_link: string;
-  target_link: string;
-  traffic_classes: string;
-  confidence: number;
+  timestamp: number;
+  mode: 'LSTM' | 'Naive';
+  from_network: string;
+  to_network: string;
   reason: string;
-  status: string;
-  sandbox_validated: string;
+  current_health: number;
+  avoided_latency: number;
 }
 
-export interface SandboxReport {
-  id: string;
-  result: string;
-  details: string;
-  loop_free: boolean;
-  policy_compliant: boolean;
-  reachability_verified: boolean;
-  execution_time_ms: number;
+export interface ComparisonStats {
+  lstm_avg_latency: number;
+  naive_avg_latency: number;
+  lstm_switches: number;
+  naive_switches: number;
+  improvement_pct: number;
 }
 
-export interface PolicyRule {
-  name: string;
-  traffic_class: string;
-  priority: number;
-  bandwidth_guarantee_mbps: number | null;
-  latency_max_ms: number | null;
-  action: string;
-  target_links: string[];
-}
-
-export interface IntentResponse {
-  status: string;
-  intent: string;
-  rules_generated: PolicyRule[];
-  validation: Array<{ rule: string; validated: boolean }>;
-}
-
-export interface WebSocketMessage {
-  type: string;
-  data: Record<string, unknown>;
+export interface NetworkUpdatePayload {
+  type: 'network_update' | 'initial_state' | 'lstm_toggled';
+  lstm_enabled: boolean;
+  selected_network: string;
+  lstm_selected: string;
+  naive_selected: string;
+  networks: Record<string, NetworkMetrics>;
+  predictions: Record<string, number[]>;
+  steering_log: SteeringEvent[];
+  comparison?: ComparisonStats;
   timestamp: number;
 }

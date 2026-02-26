@@ -1,73 +1,65 @@
 import { create } from 'zustand';
+import { NetworkMetrics, SteeringEvent, ComparisonStats } from '../types';
 
-interface LinkPrediction {
-  health_score: number;
-  confidence: number;
-  latency_forecast: number[];
-  jitter_forecast: number[];
-  packet_loss_forecast: number[];
-  timestamp: string;
-}
+interface AppStore {
+  // LSTM state
+  lstmEnabled: boolean;
+  setLstmEnabled: (v: boolean) => void;
 
-interface LinkHealth {
-  health_score: number;
-  confidence: number;
-  latency_current: number;
-  jitter_current: number;
-  packet_loss_current: number;
-  latency_forecast: number[];
-  trend: 'improving' | 'stable' | 'degrading';
-}
+  // Network data
+  networks: Record<string, NetworkMetrics>;
+  selectedNetwork: string;
+  lstmSelected: string;
+  naiveSelected: string;
+  predictions: Record<string, number[]>;
+  steeringLog: SteeringEvent[];
+  comparison: ComparisonStats | null;
+  timestamp: number;
 
-interface SteeringEvent {
-  action: string;
-  source: string;
-  target: string;
-  reason: string;
-  timestamp: string;
-}
-
-interface NetworkState {
-  // Active links
-  activeLinks: string[];
-  setActiveLinks: (links: string[]) => void;
-
-  // Predictions per link
-  predictions: Record<string, LinkPrediction>;
-  updatePredictions: (preds: Record<string, LinkPrediction>) => void;
-
-  // Real-time health data (from WebSocket)
-  scoreboard: Record<string, LinkHealth>;
-  updateScoreboard: (data: Record<string, LinkHealth>) => void;
-
-  // Steering events
-  steeringHistory: SteeringEvent[];
-  addSteeringEvent: (event: SteeringEvent) => void;
-
-  // Connection state
+  // WebSocket connection
   wsConnected: boolean;
-  setWsConnected: (connected: boolean) => void;
+  setWsConnected: (v: boolean) => void;
+
+  // Update from WebSocket payload
+  applyUpdate: (payload: {
+    lstm_enabled: boolean;
+    selected_network: string;
+    lstm_selected: string;
+    naive_selected: string;
+    networks: Record<string, NetworkMetrics>;
+    predictions: Record<string, number[]>;
+    steering_log: SteeringEvent[];
+    comparison?: ComparisonStats;
+    timestamp: number;
+  }) => void;
 }
 
-export const useNetworkStore = create<NetworkState>((set) => ({
-  activeLinks: [],
-  setActiveLinks: (links) => set({ activeLinks: links }),
+export const useAppStore = create<AppStore>((set) => ({
+  lstmEnabled: false,
+  setLstmEnabled: (v) => set({ lstmEnabled: v }),
 
+  networks: {},
+  selectedNetwork: 'fiber-primary',
+  lstmSelected: 'fiber-primary',
+  naiveSelected: 'fiber-primary',
   predictions: {},
-  updatePredictions: (preds) =>
-    set((state) => ({
-      predictions: { ...state.predictions, ...preds },
-    })),
-
-  scoreboard: {},
-  updateScoreboard: (data) => set({ scoreboard: data }),
-
-  steeringHistory: [],
-  addSteeringEvent: (event) =>
-    set((state) => ({
-      steeringHistory: [event, ...state.steeringHistory].slice(0, 100),
-    })),
+  steeringLog: [],
+  comparison: null,
+  timestamp: 0,
 
   wsConnected: false,
-  setWsConnected: (connected) => set({ wsConnected: connected }),
+  setWsConnected: (v) => set({ wsConnected: v }),
+
+  applyUpdate: (payload) =>
+    set({
+      lstmEnabled: payload.lstm_enabled,
+      selectedNetwork: payload.selected_network,
+      lstmSelected: payload.lstm_selected,
+      naiveSelected: payload.naive_selected,
+      networks: payload.networks,
+      predictions: payload.predictions,
+      steeringLog: payload.steering_log,
+      comparison: payload.comparison ?? null,
+      timestamp: payload.timestamp,
+    }),
 }));
