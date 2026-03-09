@@ -1,5 +1,31 @@
+# PathWise AI — Local/Offline Dependencies
+# Run: pip install -r requirements-local.txt
+
+# ── Web Framework ─────────────────────────────────────────
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 websockets>=12.0
-numpy>=1.26.0
 pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# ── Data & ML ─────────────────────────────────────────────
+numpy>=1.26.0
+pandas>=2.1.0
+pyarrow>=14.0.0          # Parquet read/write
+torch>=2.1.0             # LSTM training/inference
+scikit-learn>=1.4.0      # Scalers, metrics
+
+# ── Real-World Data Fetching ──────────────────────────────
+requests>=2.31.0         # HTTP client for public APIs
+urllib3>=2.1.0
+
+# ── Utilities ─────────────────────────────────────────────
+python-dateutil>=2.8.2
+tqdm>=4.66.0             # Progress bars for data generation
+rich>=13.7.0             # Console output formatting
+
+# ── Testing ───────────────────────────────────────────────
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+pytest-mock>=3.12.0
+httpx>=0.26.0            # Test client for FastAPI
