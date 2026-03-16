@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-03-09T03:16:14.003944+00:00",
+  "duration_hours": 48,
+  "interval_sec": 1,
+  "start_dt": "2026-03-07T03:15:00+00:00",
+  "links": [
+    "fiber-primary",
+    "broadband-secondary",
+    "satellite-backup",
+    "5g-mobile"
+  ],
+  "calibration": {},
+  "total_points": 691200,
+  "data_sources": [
+    "Ookla Speedtest Global Index Q4 2025",
+    "FCC Measuring Broadband America 2024",
+    "CAIDA Internet Outage Observatory 2024",
+    "Starlink/SpaceX published SLA data",
+    "3GPP 5G NR TS 22.261 performance targets",
+    "M-Lab NDT7 measurement archive",
+    "Cloudflare Radar BGP outage logs"
+  ]
+}

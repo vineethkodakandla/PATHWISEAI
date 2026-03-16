@@ -66,6 +66,16 @@ export const api = {
 
   rollbackRule: (ruleId: string) =>
     client.delete(`/api/v1/routing/${ruleId}`).then((r) => r.data),
+
+  // Intent-Based Policy Management
+  applyIntent: (intent_text: string) =>
+    client.post("/api/v1/policies/intent", { intent_text }).then((r) => r.data),
+
+  getActivePolicies: () =>
+    client.get("/api/v1/policies/active").then((r) => r.data),
+
+  deletePolicy: (name: string) =>
+    client.delete(`/api/v1/policies/${encodeURIComponent(name)}`).then((r) => r.data),
 };
 
 export function createWebSocket(): WebSocket {

@@ -14,12 +14,14 @@ import {
   Activity,
   Wifi,
   FlaskConical,
+  Lightbulb,
 } from "lucide-react";
 
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import NetworkSimulation from "./pages/NetworkSimulation";
 import SandboxViewer from "./pages/SandboxViewer";
+import IntentPolicy from "./pages/IntentPolicy";
 import { useScoreboardWebSocket } from "./hooks/useWebSocket";
 import { useNetworkStore } from "./store/networkStore";
 
@@ -27,6 +29,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/simulation", icon: Network, label: "Network Simulation" },
   { to: "/sandbox", icon: FlaskConical, label: "Sandbox" },
+  { to: "/intent", icon: Lightbulb, label: "Intent Policy" },
   { to: "/admin", icon: ShieldCheck, label: "Admin Panel" },
 ];
 
@@ -127,6 +130,7 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/simulation" element={<NetworkSimulation />} />
               <Route path="/sandbox" element={<SandboxViewer />} />
+              <Route path="/intent" element={<IntentPolicy />} />
               <Route path="/admin" element={<AdminPanel />} />
             </Routes>
           </motion.div>

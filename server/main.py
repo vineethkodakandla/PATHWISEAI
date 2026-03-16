@@ -79,6 +79,10 @@ class ApplyRuleRequest(BaseModel):
     traffic_classes: list[str]
 
 
+class IntentRequest(BaseModel):
+    intent_text: str
+
+
 # ── REST Endpoints ──────────────────────────────────────────
 
 @app.get("/api/v1/status")
@@ -353,6 +357,129 @@ async def rollback_rule(rule_id: str):
                 "message": f"Traffic restored to {r.source_link}",
             }
     return {"error": "Rule not found or already rolled back"}
+
+
+# ── Intent-Based Policy Endpoints ───────────────────────────
+
+_active_policies: list[dict] = []
+
+_TRAFFIC_CLASS_MAP = {
+    frozenset(["voip", "voice", "sip", "phone"]): "voip",
+    frozenset(["video", "zoom", "teams", "conferencing", "meet"]): "video",
+    frozenset(["medical", "dicom", "pacs", "imaging"]): "medical_imaging",
+    frozenset(["financial", "trading", "transaction", "banking"]): "financial",
+    frozenset(["guest", "wifi"]): "guest_wifi",
+    frozenset(["backup", "sync", "replication"]): "backup",
+    frozenset(["web", "browsing", "http", "https"]): "web_browsing",
+    frozenset(["streaming", "netflix", "youtube", "hulu"]): "streaming",
+    frozenset(["bulk", "ftp", "sftp", "transfer", "torrent"]): "bulk",
+    frozenset(["critical", "erp", "sap"]): "critical",
+}
+
+
+def _parse_traffic_class(text: str) -> str:
+    text_lower = text.lower()
+    for keywords, cls in _TRAFFIC_CLASS_MAP.items():
+        if any(k in text_lower for k in keywords):
+            return cls
+    return "custom"
+
+
+def _parse_intent(intent_text: str) -> dict | None:
+    """
+    Rule-based NLP intent parser.
+    Supports: prioritize, block, guarantee, limit, redirect, set latency.
+    """
+    import re
+    text = intent_text.strip().lower()
+
+    # Determine action
+    if any(w in text for w in ["prioritize", "priority", "prefer"]):
+        action = "prioritize"
+        priority = 200
+    elif any(w in text for w in ["block", "deny", "drop"]):
+        action = "block"
+        priority = 300
+    elif any(w in text for w in ["guarantee", "reserve", "ensure"]):
+        action = "prioritize"
+        priority = 250
+    elif any(w in text for w in ["limit", "throttle", "restrict", "cap"]):
+        action = "throttle"
+        priority = 100
+    elif any(w in text for w in ["redirect", "route", "steer", "send"]):
+        action = "redirect"
+        priority = 150
+    elif "latency" in text or "delay" in text:
+        action = "prioritize"
+        priority = 180
+    else:
+        return None
+
+    traffic_class = _parse_traffic_class(text)
+
+    # Extract bandwidth value (e.g. "10 Mbps", "50 mbps")
+    bw_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:mbps|mb/s|mbit)", text, re.I)
+    bandwidth_mbps = float(bw_match.group(1)) if bw_match else None
+
+    # Extract latency value (e.g. "50ms", "100 ms")
+    lat_match = re.search(r"(\d+(?:\.\d+)?)\s*ms", text, re.I)
+    latency_ms = float(lat_match.group(1)) if lat_match else None
+
+    # Extract target link
+    links = ["fiber-primary", "broadband-secondary", "satellite-backup", "5g-mobile"]
+    target_links = [l for l in links if l.replace("-", " ") in text or l in text]
+
+    # Build policy name from action + traffic class
+    name = f"{action}_{traffic_class}_{len(_active_policies) + 1}"
+
+    rule = {
+        "name": name,
+        "traffic_class": traffic_class,
+        "priority": priority,
+        "action": action,
+    }
+    if bandwidth_mbps:
+        rule["bandwidth_guarantee_mbps"] = bandwidth_mbps
+    if latency_ms:
+        rule["latency_max_ms"] = latency_ms
+    if target_links:
+        rule["target_links"] = target_links
+
+    return rule
+
+
+@app.post("/api/v1/policies/intent")
+async def apply_intent(req: IntentRequest):
+    rule = _parse_intent(req.intent_text)
+    if not rule:
+        return {"status": "error", "message": "Could not parse intent. Try: 'Prioritize VoIP over bulk' or 'Block guest WiFi'"}
+
+    # Remove any existing rule with same traffic class + action
+    _active_policies[:] = [
+        p for p in _active_policies
+        if not (p["traffic_class"] == rule["traffic_class"] and p["action"] == rule["action"])
+    ]
+    _active_policies.append(rule)
+
+    return {
+        "status": "ok",
+        "message": f"Policy '{rule['name']}' applied: {rule['action']} {rule['traffic_class']}",
+        "rule": rule,
+    }
+
+
+@app.get("/api/v1/policies/active")
+async def get_active_policies():
+    return {"policies": _active_policies}
+
+
+@app.delete("/api/v1/policies/{name}")
+async def delete_policy(name: str):
+    before = len(_active_policies)
+    _active_policies[:] = [p for p in _active_policies if p["name"] != name]
+    if len(_active_policies) < before:
+        return {"status": "ok", "message": f"Policy '{name}' removed"}
+    return {"status": "error", "message": "Policy not found"}
 
 
 def _serialize_prediction(pred):

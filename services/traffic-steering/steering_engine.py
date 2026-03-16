@@ -2,10 +2,13 @@
 
 import asyncio
 import json
+import logging
 import redis.asyncio as redis
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 class SteeringAction(Enum):
     HOLD = "hold"               # No change needed
@@ -132,6 +135,12 @@ class SteeringEngine:
                 return False
         
         # Execute make-before-break handoff
+        if self.sdn_client is None:
+            logger.warning("SDN client not initialised; skipping flow-rule installation")
+            audit_entry["status"] = "skipped_no_sdn_client"
+            await self.log_audit(audit_entry)
+            return False
+
         success = await self.sdn_client.install_flow_rules(
             source_link=decision.source_link,
             target_link=decision.target_link,
@@ -144,15 +153,44 @@ class SteeringEngine:
         return success
 
     async def validate_in_sandbox(self, decision: SteeringDecision) -> bool:
-        """Send decision to Digital Twin for validation."""
+        """
+        Send decision to the Digital Twin and poll for the result.
+
+        Publishes a validation request to the ``sandbox:requests`` stream,
+        then polls ``sandbox:report:{report_id}`` every 250 ms until the
+        Digital Twin service writes the outcome or the 4.5-second budget
+        (leaving 0.5 s for SDN execution within the 5 s SLA) expires.
+
+        Returns True only when the report exists AND is loop-free AND
+        policy-compliant.
+        """
+        import uuid
+        report_id = str(uuid.uuid4())
         await self.redis.xadd("sandbox:requests", {
+            "report_id": report_id,
             "source_link": decision.source_link,
             "target_link": decision.target_link,
             "traffic_classes": json.dumps(decision.traffic_classes),
             "action": decision.action.value,
         })
-        # In production, await sandbox result via Redis pub/sub
-        return True
+
+        deadline = asyncio.get_event_loop().time() + 4.5
+        while asyncio.get_event_loop().time() < deadline:
+            report = await self.redis.hgetall(f"sandbox:report:{report_id}")
+            if report:
+                result = report.get(b"result", b"").decode()
+                if result == "pass":
+                    return True
+                if result not in ("", "pending"):
+                    logger.warning(
+                        f"Sandbox rejected decision {report_id}: {result} — "
+                        f"{report.get(b'details', b'').decode()}"
+                    )
+                    return False
+            await asyncio.sleep(0.25)
+
+        logger.warning(f"Sandbox validation timed out for report {report_id}")
+        return False
 
     async def log_audit(self, entry: dict):
         """Log steering decision to audit trail."""

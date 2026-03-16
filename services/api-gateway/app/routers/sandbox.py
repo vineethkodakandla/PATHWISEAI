@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
+import asyncio
 import redis.asyncio as redis
 import json
 import uuid
@@ -65,6 +66,70 @@ async def validate_in_sandbox(request: SandboxValidationRequest):
         reachability_verified=False,
         execution_time_ms=0.0,
     )
+
+
+@router.get("/history")
+async def get_sandbox_history(limit: int = 20):
+    """
+    Return the most recent sandbox validation requests and their outcomes.
+
+    Reads from the ``sandbox:requests`` Redis Stream and enriches each
+    entry with its corresponding report (if completed).
+    """
+    entries = await redis_client.xrevrange("sandbox:requests", count=limit)
+
+    # Decode stream entries first so we have all report_ids up-front
+    decoded_entries = []
+    for entry_id, fields in entries:
+        decoded = {k.decode(): v.decode() for k, v in fields.items()}
+        report_id = decoded.get("report_id", entry_id.decode())
+        decoded_entries.append((report_id, decoded))
+
+    # Fetch all report hashes in parallel
+    report_raws = await asyncio.gather(
+        *[redis_client.hgetall(f"sandbox:report:{rid}") for rid, _ in decoded_entries]
+    )
+
+    history = []
+    for (report_id, decoded), report_raw in zip(decoded_entries, report_raws):
+        outcome = {
+            "result": report_raw.get(b"result", b"pending").decode(),
+            "loop_free": report_raw.get(b"loop_free", b"false").decode() == "true",
+            "policy_compliant": report_raw.get(b"policy_compliant", b"false").decode() == "true",
+            "reachability_verified": report_raw.get(b"reachability_verified", b"false").decode() == "true",
+            "execution_time_ms": float(report_raw.get(b"execution_time_ms", 0)),
+        } if report_raw else {"result": "pending"}
+        history.append({
+            "id": report_id,
+            "source_link": decoded.get("source_link"),
+            "target_link": decoded.get("target_link"),
+            "traffic_classes": decoded.get("traffic_classes"),
+            **outcome,
+        })
+    return {"history": history, "count": len(history)}
+
+
+@router.get("/topology")
+async def get_sandbox_topology():
+    """
+    Return the current topology snapshot used by the Digital Twin sandbox.
+
+    Topology is managed live by the digital-twin service; this endpoint
+    returns the known link inventory and instructions for injecting a
+    custom topology via topology_override on validation requests.
+    """
+    return {
+        "topology_source": "digital-twin-service",
+        "note": (
+            "Live topology is managed by the digital-twin service. "
+            "Use POST /api/v1/sandbox/validate with topology_override "
+            "to inject a custom topology for a validation run."
+        ),
+        "default_links": [
+            "fiber-primary", "broadband-secondary",
+            "satellite-backup", "5g-mobile",
+        ],
+    }
 
 
 @router.get("/reports/{report_id}", response_model=SandboxReportResponse)

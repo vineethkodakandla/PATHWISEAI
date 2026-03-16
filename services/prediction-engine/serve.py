@@ -1,13 +1,18 @@
 # services/prediction-engine/serve.py
 
+import json
+import time
 import torch
 import numpy as np
 import asyncio
+import logging
 import redis.asyncio as redis
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from model.lstm_network import PathWiseLSTM
 from model.feature_engineering import FeatureEngineer
+
+logger = logging.getLogger(__name__)
 
 # Global state
 model: PathWiseLSTM = None
@@ -47,41 +52,40 @@ async def prediction_loop():
         try:
             # Get all active link IDs from Redis
             link_ids = await redis_client.smembers("active_links")
-            
+            num_links = max(1, len(link_ids))
+
+            # Fetch enough entries so each link can collect 60 of its own
+            # data points (entries are interleaved across all links).
+            raw_points = await redis_client.xrevrange(
+                "telemetry:raw", count=60 * num_links
+            )
+
             for link_id_bytes in link_ids:
                 link_id = link_id_bytes.decode()
-                
-                # Fetch last 60 telemetry points from Redis Stream
-                raw_points = await redis_client.xrevrange(
-                    "telemetry:raw", count=60
-                )
-                
-                if len(raw_points) < 60:
-                    continue  # Not enough data yet
-                
-                # Build feature tensor
+
+                # Build feature tensor (filters to this link's entries)
                 window = build_feature_window(raw_points, link_id)
                 if window is None:
-                    continue
-                
+                    continue  # Not enough data yet for this link
+
                 # Inference
                 with torch.no_grad():
                     x = torch.tensor(window).unsqueeze(0)  # (1, 60, 13)
                     preds, confidence = model(x)
-                
+
                 # Compute health score (0-100, higher is healthier)
                 health_score = compute_health_score(preds, confidence)
-                
+
                 # Publish prediction to Redis for consumers
                 await redis_client.hset(f"prediction:{link_id}", mapping={
-                    "latency_forecast": preds["latency"][0].numpy().tolist().__str__(),
-                    "jitter_forecast": preds["jitter"][0].numpy().tolist().__str__(),
-                    "packet_loss_forecast": preds["packet_loss"][0].numpy().tolist().__str__(),
+                    "latency_forecast": json.dumps(preds["latency"][0].detach().numpy().tolist()),
+                    "jitter_forecast": json.dumps(preds["jitter"][0].detach().numpy().tolist()),
+                    "packet_loss_forecast": json.dumps(preds["packet_loss"][0].detach().numpy().tolist()),
                     "confidence": float(confidence[0]),
                     "health_score": health_score,
-                    "timestamp": str(asyncio.get_event_loop().time()),
+                    "timestamp": str(time.time()),
                 })
-                
+
                 # Publish event if degradation predicted
                 if health_score < 50:
                     await redis_client.xadd("alerts:degradation", {
@@ -89,9 +93,9 @@ async def prediction_loop():
                         "health_score": str(health_score),
                         "confidence": str(float(confidence[0])),
                     })
-        
+
         except Exception as e:
-            print(f"Prediction loop error: {e}")
+            logger.error(f"Prediction loop error: {e}", exc_info=True)
         
         await asyncio.sleep(1.0)
 
