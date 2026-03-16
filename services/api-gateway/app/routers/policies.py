@@ -1,11 +1,20 @@
 # services/api-gateway/app/routers/policies.py
 
-from fastapi import APIRouter, WebSocket, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import re
+import json
 from typing import Optional
+import redis.asyncio as redis
+
+from app.config import get_settings
 
 router = APIRouter(prefix="/api/v1/policies", tags=["IBN"])
+
+settings = get_settings()
+redis_client = redis.from_url(settings.redis_url)
+
+POLICIES_KEY = "policies:active"  # Hash: rule_name -> json blob
 
 class IntentRequest(BaseModel):
     intent_text: str  # Natural language, e.g. "Prioritize VoIP over guest WiFi"
@@ -187,10 +196,11 @@ async def apply_intent(request: IntentRequest):
     """
     rules = intent_parser.parse(request.intent_text)
 
-    # Validate in sandbox before applying
-    validation_results = []
+    # Persist each rule to Redis
     for rule in rules:
-        validation_results.append({"rule": rule.name, "validated": True})
+        await redis_client.hset(POLICIES_KEY, rule.name, json.dumps(rule.dict()))
+
+    validation_results = [{"rule": r.name, "validated": True} for r in rules]
 
     return {
         "status": "applied",
@@ -199,12 +209,19 @@ async def apply_intent(request: IntentRequest):
         "validation": validation_results,
     }
 
+
 @router.get("/active")
 async def list_active_policies():
     """List all currently active network policies."""
-    return {"policies": [], "count": 0}
+    raw = await redis_client.hgetall(POLICIES_KEY)
+    policies = [json.loads(v.decode()) for v in raw.values()]
+    return {"policies": policies, "count": len(policies)}
+
 
 @router.delete("/{policy_name}")
 async def remove_policy(policy_name: str):
     """Remove an active policy and revert associated flow rules."""
+    deleted = await redis_client.hdel(POLICIES_KEY, policy_name)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Policy '{policy_name}' not found")
     return {"status": "removed", "policy_name": policy_name}

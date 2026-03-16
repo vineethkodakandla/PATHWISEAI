@@ -15,12 +15,23 @@ services:
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pathwise -d pathwise"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # --- SDN Controllers ---
   opendaylight:
@@ -51,8 +62,16 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - redis
-      - timescaledb
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     environment:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://pathwise:pathwise_dev@timescaledb:5432/pathwise
@@ -61,8 +80,10 @@ services:
   telemetry-ingestion:
     build: ./services/telemetry-ingestion
     depends_on:
-      - redis
-      - timescaledb
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
     environment:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://pathwise:pathwise_dev@timescaledb:5432/pathwise
@@ -73,7 +94,8 @@ services:
   prediction-engine:
     build: ./services/prediction-engine
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
       REDIS_URL: redis://redis:6379
       MODEL_PATH: /models/best_model.pt
@@ -83,8 +105,10 @@ services:
   traffic-steering:
     build: ./services/traffic-steering
     depends_on:
-      - redis
-      - opendaylight
+      redis:
+        condition: service_healthy
+      opendaylight:
+        condition: service_started
     environment:
       REDIS_URL: redis://redis:6379
       ODL_URL: http://opendaylight:8181

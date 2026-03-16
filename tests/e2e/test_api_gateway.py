@@ -22,7 +22,7 @@ class TestAPIGateway:
         """Test the IBN intent parsing endpoint."""
         async with client as ac:
             response = await ac.post("/api/v1/policies/intent", json={
-                "intent": "Prioritize VoIP over guest WiFi"
+                "intent_text":"Prioritize VoIP over guest WiFi"
             })
             assert response.status_code == 200
             data = response.json()
@@ -34,7 +34,7 @@ class TestAPIGateway:
         """Test that invalid intents return proper error."""
         async with client as ac:
             response = await ac.post("/api/v1/policies/intent", json={
-                "intent": "do something random"
+                "intent_text":"do something random"
             })
             assert response.status_code in (400, 422, 500)
 
