@@ -1,6 +1,7 @@
 # services/telemetry-ingestion/collector.py
 
 import asyncio
+import os
 import time
 import logging
 import random
@@ -253,9 +254,8 @@ class TelemetryCollector:
     async def run(self, devices: list[dict]):
         """Main collection loop. Also starts a concurrent NetFlow listener."""
         logger.info(f"Starting collection loop ({self.mode} mode) for {len(devices)} devices")
-        import asyncio as _asyncio
-        netflow_port = int(__import__("os").getenv("NETFLOW_PORT", "9996"))
-        _asyncio.create_task(self.collect_netflow(netflow_port))
+        netflow_port = int(os.getenv("NETFLOW_PORT", "9996"))
+        asyncio.create_task(self.collect_netflow(netflow_port))
         while True:
             start = time.monotonic()
             tasks = [

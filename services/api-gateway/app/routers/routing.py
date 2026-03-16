@@ -77,10 +77,8 @@ async def apply_routing_rule(request: RoutingRuleRequest):
 async def get_active_rules():
     """List routing rules that are currently active."""
     raw = await redis_client.hgetall(RULES_KEY)
-    rules = [
-        json.loads(v.decode()) for v in raw.values()
-        if json.loads(v.decode()).get("status") == "active"
-    ]
+    all_rules = [json.loads(v.decode()) for v in raw.values()]
+    rules = [r for r in all_rules if r.get("status") == "active"]
     return {"rules": rules, "count": len(rules)}
 
 

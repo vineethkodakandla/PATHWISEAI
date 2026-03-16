@@ -1,6 +1,7 @@
 # services/api-gateway/app/routers/metrics.py
 
 from fastapi import APIRouter
+import asyncio
 import json
 import redis.asyncio as redis
 
@@ -21,13 +22,16 @@ async def get_comparison_metrics():
     Each entry includes the current health score, mean forecasted latency,
     jitter, and packet loss over the 30-second horizon.
     """
-    link_ids = await redis_client.smembers("active_links")
+    link_ids_raw = await redis_client.smembers("active_links")
+    link_ids = [b.decode() for b in link_ids_raw]
+
+    # Fetch all prediction hashes in parallel instead of sequentially
+    preds = await asyncio.gather(
+        *[redis_client.hgetall(f"prediction:{lid}") for lid in link_ids]
+    )
+
     comparison = []
-
-    for link_id_bytes in link_ids:
-        link_id = link_id_bytes.decode()
-        pred = await redis_client.hgetall(f"prediction:{link_id}")
-
+    for link_id, pred in zip(link_ids, preds):
         if pred:
             latency_fc = json.loads(pred.get(b"latency_forecast", b"[]").decode())
             jitter_fc = json.loads(pred.get(b"jitter_forecast", b"[]").decode())

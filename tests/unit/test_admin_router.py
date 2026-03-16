@@ -1,18 +1,9 @@
 # tests/unit/test_admin_router.py
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "services" / "api-gateway"))
-
 import pytest
 from unittest.mock import AsyncMock, patch
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient
 from app.main import app
-
-
-@pytest.fixture
-def transport():
-    return ASGITransport(app=app)
 
 
 class TestLSTMToggle:

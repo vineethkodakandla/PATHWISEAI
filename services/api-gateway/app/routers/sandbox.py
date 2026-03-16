@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
+import asyncio
 import redis.asyncio as redis
 import json
 import uuid
@@ -76,11 +77,21 @@ async def get_sandbox_history(limit: int = 20):
     entry with its corresponding report (if completed).
     """
     entries = await redis_client.xrevrange("sandbox:requests", count=limit)
-    history = []
+
+    # Decode stream entries first so we have all report_ids up-front
+    decoded_entries = []
     for entry_id, fields in entries:
         decoded = {k.decode(): v.decode() for k, v in fields.items()}
         report_id = decoded.get("report_id", entry_id.decode())
-        report_raw = await redis_client.hgetall(f"sandbox:report:{report_id}")
+        decoded_entries.append((report_id, decoded))
+
+    # Fetch all report hashes in parallel
+    report_raws = await asyncio.gather(
+        *[redis_client.hgetall(f"sandbox:report:{rid}") for rid, _ in decoded_entries]
+    )
+
+    history = []
+    for (report_id, decoded), report_raw in zip(decoded_entries, report_raws):
         outcome = {
             "result": report_raw.get(b"result", b"pending").decode(),
             "loop_free": report_raw.get(b"loop_free", b"false").decode() == "true",
@@ -103,16 +114,10 @@ async def get_sandbox_topology():
     """
     Return the current topology snapshot used by the Digital Twin sandbox.
 
-    Reads the last completed sandbox report's topology snapshot, or falls
-    back to a default placeholder when no validation has run yet.
+    Topology is managed live by the digital-twin service; this endpoint
+    returns the known link inventory and instructions for injecting a
+    custom topology via topology_override on validation requests.
     """
-    # Look for the most recently stored topology in sandbox reports
-    keys = await redis_client.keys("sandbox:report:*")
-    latest_topology = None
-    for key in keys[:10]:  # Limit scan to 10 most-recent keys
-        report = await redis_client.hgetall(key)
-        # topology is not stored per-report in this implementation;
-        # return a descriptive response indicating the topology source
     return {
         "topology_source": "digital-twin-service",
         "note": (

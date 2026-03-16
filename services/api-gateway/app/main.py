@@ -1,13 +1,17 @@
 # services/api-gateway/app/main.py
 
+import redis.asyncio as _redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+from app.config import get_settings
 from app.routers import telemetry, predictions, steering, sandbox, policies, admin, metrics, routing
 from app.websocket.scoreboard import ScoreboardManager
 
-scoreboard = ScoreboardManager(redis_url="redis://redis:6379")
+_settings = get_settings()
+scoreboard = ScoreboardManager(redis_url=_settings.redis_url)
+_status_redis = _redis.from_url(_settings.redis_url)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,20 +48,16 @@ app.include_router(routing.router)        # GET/POST/DELETE /api/v1/routing/*
 @app.get("/api/v1/status", tags=["Health"])
 async def system_status():
     """System-wide health check: Redis connectivity and service state."""
-    import redis.asyncio as _redis
-    r = _redis.from_url("redis://redis:6379")
     try:
-        await r.ping()
+        await _status_redis.ping()
         redis_ok = True
-        link_count = len(await r.smembers("active_links"))
-        lstm_raw = await r.get("admin:lstm_enabled")
+        link_count = len(await _status_redis.smembers("active_links"))
+        lstm_raw = await _status_redis.get(admin.LSTM_STATE_KEY)
         lstm_enabled = lstm_raw is None or lstm_raw.decode() == "1"
     except Exception:
         redis_ok = False
         link_count = 0
         lstm_enabled = False
-    finally:
-        await r.aclose()
 
     return {
         "status": "healthy" if redis_ok else "degraded",
