@@ -151,8 +151,8 @@ class TelemetryCollector:
                 latency = float(output.split("time=")[1].split(" ")[0])
                 jitter = random.uniform(0.1, latency * 0.1)
                 return latency, jitter
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(f"Ping to {host} failed: {exc}")
         return random.uniform(5, 30), random.uniform(0.5, 3)
 
     def _collect_synthetic(self, device_ip: str) -> TelemetryPoint:
@@ -251,8 +251,11 @@ class TelemetryCollector:
         }, maxlen=86400)  # Keep ~24h at 1/sec
 
     async def run(self, devices: list[dict]):
-        """Main collection loop."""
+        """Main collection loop. Also starts a concurrent NetFlow listener."""
         logger.info(f"Starting collection loop ({self.mode} mode) for {len(devices)} devices")
+        import asyncio as _asyncio
+        netflow_port = int(__import__("os").getenv("NETFLOW_PORT", "9996"))
+        _asyncio.create_task(self.collect_netflow(netflow_port))
         while True:
             start = time.monotonic()
             tasks = [

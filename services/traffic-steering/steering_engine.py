@@ -2,10 +2,13 @@
 
 import asyncio
 import json
+import logging
 import redis.asyncio as redis
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 class SteeringAction(Enum):
     HOLD = "hold"               # No change needed
@@ -132,6 +135,12 @@ class SteeringEngine:
                 return False
         
         # Execute make-before-break handoff
+        if self.sdn_client is None:
+            logger.warning("SDN client not initialised; skipping flow-rule installation")
+            audit_entry["status"] = "skipped_no_sdn_client"
+            await self.log_audit(audit_entry)
+            return False
+
         success = await self.sdn_client.install_flow_rules(
             source_link=decision.source_link,
             target_link=decision.target_link,

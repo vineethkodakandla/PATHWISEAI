@@ -8,7 +8,7 @@ from typing import Optional
 router = APIRouter(prefix="/api/v1/policies", tags=["IBN"])
 
 class IntentRequest(BaseModel):
-    intent: str  # Natural language, e.g. "Prioritize VoIP over guest WiFi"
+    intent_text: str  # Natural language, e.g. "Prioritize VoIP over guest WiFi"
 
 class PolicyRule(BaseModel):
     name: str
@@ -185,16 +185,16 @@ async def apply_intent(request: IntentRequest):
     Example: POST /api/v1/policies/intent
     Body: {"intent": "Prioritize medical imaging traffic over guest WiFi"}
     """
-    rules = intent_parser.parse(request.intent)
-    
+    rules = intent_parser.parse(request.intent_text)
+
     # Validate in sandbox before applying
     validation_results = []
     for rule in rules:
         validation_results.append({"rule": rule.name, "validated": True})
-    
+
     return {
         "status": "applied",
-        "intent": request.intent,
+        "intent": request.intent_text,
         "rules_generated": [r.dict() for r in rules],
         "validation": validation_results,
     }

@@ -22,6 +22,37 @@ async def list_active_links():
     }
 
 
+@router.get("/{link_id}/raw")
+async def get_raw_telemetry(
+    link_id: str,
+    window: int = Query(60, ge=1, le=3600, description="Number of most recent data points"),
+):
+    """
+    Get raw (unprocessed) telemetry samples for a link.
+    Returns the same fields as the standard endpoint but is intended for
+    clients that want unprocessed sensor readings without any aggregation.
+    """
+    raw_points = await redis_client.xrevrange("telemetry:raw", count=window)
+
+    data_points = []
+    for entry_id, fields in raw_points:
+        if fields.get(b"link_id", b"").decode() == link_id:
+            data_points.append({
+                "timestamp": float(fields.get(b"timestamp", 0)),
+                "latency_ms": float(fields.get(b"latency_ms", 0)),
+                "jitter_ms": float(fields.get(b"jitter_ms", 0)),
+                "packet_loss_pct": float(fields.get(b"packet_loss_pct", 0)),
+                "bandwidth_util_pct": float(fields.get(b"bandwidth_util_pct", 0)),
+                "rtt_ms": float(fields.get(b"rtt_ms", 0)),
+            })
+
+    return {
+        "link_id": link_id,
+        "data_points": data_points,
+        "count": len(data_points),
+    }
+
+
 @router.get("/{link_id}")
 async def get_telemetry(
     link_id: str,

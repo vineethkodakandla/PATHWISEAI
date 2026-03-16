@@ -139,8 +139,11 @@ class NetFlowParser:
 
             try:
                 records.append(NetFlowRecord(**values))
-            except TypeError:
-                pass
+            except TypeError as exc:
+                import logging
+                logging.getLogger(__name__).debug(
+                    f"Dropped NetFlow record with incomplete fields: {exc}"
+                )
 
         return records
 

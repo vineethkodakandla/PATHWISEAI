@@ -1,5 +1,6 @@
 # services/prediction-engine/serve.py
 
+import json
 import torch
 import numpy as np
 import asyncio
@@ -74,9 +75,9 @@ async def prediction_loop():
                 
                 # Publish prediction to Redis for consumers
                 await redis_client.hset(f"prediction:{link_id}", mapping={
-                    "latency_forecast": preds["latency"][0].numpy().tolist().__str__(),
-                    "jitter_forecast": preds["jitter"][0].numpy().tolist().__str__(),
-                    "packet_loss_forecast": preds["packet_loss"][0].numpy().tolist().__str__(),
+                    "latency_forecast": json.dumps(preds["latency"][0].detach().numpy().tolist()),
+                    "jitter_forecast": json.dumps(preds["jitter"][0].detach().numpy().tolist()),
+                    "packet_loss_forecast": json.dumps(preds["packet_loss"][0].detach().numpy().tolist()),
                     "confidence": float(confidence[0]),
                     "health_score": health_score,
                     "timestamp": str(asyncio.get_event_loop().time()),
