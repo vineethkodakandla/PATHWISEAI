@@ -68,7 +68,10 @@ class PathWiseLSTM(nn.Module):
             nn.Linear(64, horizon),
         )
         
-        # Confidence estimation head (used by Health Scoreboard)
+        # Confidence estimation head (used by Health Scoreboard).
+        # Takes the shared context vector as input; its output gates the
+        # prediction heads so that gradients always flow through it during
+        # the standard prediction loss backward pass.
         self.confidence_head = nn.Sequential(
             nn.Linear(hidden_size, 32),
             nn.ReLU(),
@@ -93,13 +96,18 @@ class PathWiseLSTM(nn.Module):
         attn_weights = torch.softmax(attn_weights, dim=1)
         context = (lstm_out * attn_weights).sum(dim=1)   # (batch, 128)
         
-        # Predictions
-        predictions = {
-            "latency": self.latency_head(context),       # (batch, 30)
-            "jitter": self.jitter_head(context),
-            "packet_loss": self.packet_loss_head(context),
-        }
+        # Confidence gates predictions so its parameters always participate
+        # in the computation graph when the prediction loss is back-propagated.
         confidence = self.confidence_head(context)        # (batch, 1)
+
+        # Predictions are scaled by confidence (broadcast over horizon dim).
+        # This keeps confidence ∈ [0, 1] semantically meaningful (gain factor)
+        # while ensuring d_loss/d_confidence_head_params ≠ 0.
+        predictions = {
+            "latency":      self.latency_head(context) * confidence,      # (batch, horizon)
+            "jitter":       self.jitter_head(context) * confidence,
+            "packet_loss":  self.packet_loss_head(context) * confidence,
+        }
         
         return predictions, confidence
 
