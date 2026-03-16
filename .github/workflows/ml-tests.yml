@@ -32,13 +32,13 @@ jobs:
       - name: Run ML unit tests
         run: pytest tests/unit/test_lstm_network.py tests/unit/test_feature_engineering.py -v
 
-      - name: Generate synthetic data (smoke test)
+      - name: Generate real-world data (smoke test)
         run: |
-          mkdir -p ml/data/synthetic
-          python ml/scripts/generate_synthetic_data.py --duration-hours 1
+          mkdir -p ml/data/realworld
+          python ml/scripts/generate_realworld_data.py --duration-hours 1 --seed 42
 
       - name: Run model training smoke test
-        run: python ml/scripts/train.py --smoke-test --epochs 2 --data-dir ml/data/synthetic
+        run: python ml/scripts/train.py --smoke-test --epochs 2 --data-dir ml/data/realworld
 
       - name: Run model evaluation
-        run: python ml/scripts/evaluate.py --smoke-test --data-dir ml/data/synthetic
+        run: python ml/scripts/evaluate.py --smoke-test --data-dir ml/data/realworld
