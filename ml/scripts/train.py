@@ -35,7 +35,7 @@ def load_data(data_dir: str) -> pd.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser(description="Train PathWise LSTM model")
-    parser.add_argument("--data-dir", type=str, default="ml/data/synthetic")
+    parser.add_argument("--data-dir", type=str, default="ml/data/realworld")
     parser.add_argument("--checkpoint-dir", type=str, default="ml/checkpoints")
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -63,9 +63,30 @@ def main():
         X, y = fe.create_sequences(link_df)
         if len(X) > 0:
             X = fe.normalize(X, link_id, fit=True)
+
+            # Brownout-aware oversampling: sequences whose prediction horizon
+            # contains a brownout event are duplicated 2× extra (3× total).
+            if "brownout_active" in link_df.columns:
+                brownout = link_df["brownout_active"].reset_index(drop=True).values.astype(bool)
+                oversample_mask = np.array([
+                    brownout[
+                        i + FeatureEngineer.WINDOW_SIZE:
+                        i + FeatureEngineer.WINDOW_SIZE + FeatureEngineer.HORIZON
+                    ].any()
+                    for i in range(len(X))
+                ])
+                if oversample_mask.any():
+                    X_bo = np.tile(X[oversample_mask], (2, 1, 1))
+                    y_bo = np.tile(y[oversample_mask], (2, 1, 1))
+                    X = np.concatenate([X, X_bo])
+                    y = np.concatenate([y, y_bo])
+                    logger.info(
+                        f"  {link_id}: +{oversample_mask.sum() * 2} brownout sequences (3x oversampling)"
+                    )
+
             all_X.append(X)
             all_y.append(y)
-            logger.info(f"  {link_id}: {len(X)} sequences")
+            logger.info(f"  {link_id}: {len(X)} sequences total")
 
     X = np.concatenate(all_X)
     y = np.concatenate(all_y)

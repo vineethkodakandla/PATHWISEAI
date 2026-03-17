@@ -411,26 +411,24 @@ function TopologyView({
                 strokeOpacity={isActive ? 0.8 : 0.3}
                 strokeDasharray={brownout && !lstmEnabled ? "6 4" : "none"}
               />
-              {/* Animated flow particles */}
-              {isActive && (
-                <>
-                  <circle r="3" fill={linkColor} opacity="0.9">
+              {/* Animated animal — rabbit (fast) or tortoise (slow) based on health score */}
+              {isActive && (() => {
+                const isFast = score >= 70;
+                // Duration inversely proportional to health: score=100 → 1.2s, score=0 → 6.0s
+                const dur = `${(6.0 - (score / 100) * 4.8).toFixed(1)}s`;
+                const animal = isFast ? "🐇" : "🐢";
+                const fontSize = isFast ? 14 : 13;
+                return (
+                  <text fontSize={fontSize} textAnchor="middle" dominantBaseline="middle">
                     <animateMotion
-                      dur={`${2 + Math.random()}s`}
+                      dur={dur}
                       repeatCount="indefinite"
                       path={`M220,${y} L680,${y}`}
                     />
-                  </circle>
-                  <circle r="3" fill={linkColor} opacity="0.6">
-                    <animateMotion
-                      dur={`${2.5 + Math.random()}s`}
-                      repeatCount="indefinite"
-                      path={`M220,${y} L680,${y}`}
-                      begin="0.8s"
-                    />
-                  </circle>
-                </>
-              )}
+                    {animal}
+                  </text>
+                );
+              })()}
               {/* Label */}
               <text
                 x="450"

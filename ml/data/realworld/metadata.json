@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-03-09T03:16:14.003944+00:00",
-  "duration_hours": 48,
+  "generated_at": "2026-03-16T23:13:15.071761+00:00",
+  "duration_hours": 24,
   "interval_sec": 1,
-  "start_dt": "2026-03-07T03:15:00+00:00",
+  "start_dt": "2026-03-15T23:13:00+00:00",
   "links": [
     "fiber-primary",
     "broadband-secondary",
@@ -10,7 +10,7 @@
     "5g-mobile"
   ],
   "calibration": {},
-  "total_points": 691200,
+  "total_points": 345600,
   "data_sources": [
     "Ookla Speedtest Global Index Q4 2025",
     "FCC Measuring Broadband America 2024",
