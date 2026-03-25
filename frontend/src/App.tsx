@@ -15,6 +15,7 @@ import {
   Wifi,
   FlaskConical,
   Lightbulb,
+  BrainCircuit,
 } from "lucide-react";
 
 import Dashboard from "./pages/Dashboard";
@@ -22,15 +23,17 @@ import AdminPanel from "./pages/AdminPanel";
 import NetworkSimulation from "./pages/NetworkSimulation";
 import SandboxViewer from "./pages/SandboxViewer";
 import IntentPolicy from "./pages/IntentPolicy";
+import IBNDashboard from "./pages/IBNDashboard";
 import { useScoreboardWebSocket } from "./hooks/useWebSocket";
 import { useNetworkStore } from "./store/networkStore";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/simulation", icon: Network, label: "Network Simulation" },
-  { to: "/sandbox", icon: FlaskConical, label: "Sandbox" },
-  { to: "/intent", icon: Lightbulb, label: "Intent Policy" },
-  { to: "/admin", icon: ShieldCheck, label: "Admin Panel" },
+  { to: "/dashboard",  icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/ibn",        icon: BrainCircuit,    label: "IBN Management" },
+  { to: "/simulation", icon: Network,         label: "Network Simulation" },
+  { to: "/sandbox",    icon: FlaskConical,    label: "Sandbox" },
+  { to: "/intent",     icon: Lightbulb,       label: "Intent Policy" },
+  { to: "/admin",      icon: ShieldCheck,     label: "Admin Panel" },
 ];
 
 const App: React.FC = () => {
@@ -127,11 +130,12 @@ const App: React.FC = () => {
           >
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard"  element={<Dashboard />} />
+              <Route path="/ibn"        element={<IBNDashboard />} />
               <Route path="/simulation" element={<NetworkSimulation />} />
-              <Route path="/sandbox" element={<SandboxViewer />} />
-              <Route path="/intent" element={<IntentPolicy />} />
-              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/sandbox"    element={<SandboxViewer />} />
+              <Route path="/intent"     element={<IntentPolicy />} />
+              <Route path="/admin"      element={<AdminPanel />} />
             </Routes>
           </motion.div>
         </main>

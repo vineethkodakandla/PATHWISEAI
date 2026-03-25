@@ -68,11 +68,20 @@ export const api = {
     client.delete(`/api/v1/routing/${ruleId}`).then((r) => r.data),
 
   // Intent-Based Policy Management
-  applyIntent: (intent_text: string) =>
-    client.post("/api/v1/policies/intent", { intent_text }).then((r) => r.data),
+  applyIntent: (intent_text: string, dry_run = false) =>
+    client.post("/api/v1/policies/intent", { intent_text, dry_run }).then((r) => r.data),
+
+  previewIntent: (intent_text: string) =>
+    client.post("/api/v1/policies/preview", { intent_text, dry_run: true }).then((r) => r.data),
 
   getActivePolicies: () =>
     client.get("/api/v1/policies/active").then((r) => r.data),
+
+  getIntentHistory: (limit = 20) =>
+    client.get("/api/v1/policies/history", { params: { limit } }).then((r) => r.data),
+
+  getPolicyStats: () =>
+    client.get("/api/v1/policies/stats").then((r) => r.data),
 
   deletePolicy: (name: string) =>
     client.delete(`/api/v1/policies/${encodeURIComponent(name)}`).then((r) => r.data),

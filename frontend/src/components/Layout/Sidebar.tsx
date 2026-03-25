@@ -8,15 +8,17 @@ import {
   Wifi,
   FlaskConical,
   Lightbulb,
+  BrainCircuit,
 } from "lucide-react";
 import { useNetworkStore } from "../../store/networkStore";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/simulation", icon: Network, label: "Network Simulation" },
-  { to: "/sandbox", icon: FlaskConical, label: "Sandbox" },
-  { to: "/intent", icon: Lightbulb, label: "Intent Policy" },
-  { to: "/admin", icon: ShieldCheck, label: "Admin Panel" },
+  { to: "/dashboard",  icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/ibn",        icon: BrainCircuit,    label: "IBN Management" },
+  { to: "/simulation", icon: Network,         label: "Network Simulation" },
+  { to: "/sandbox",    icon: FlaskConical,    label: "Sandbox" },
+  { to: "/intent",     icon: Lightbulb,       label: "Intent Policy" },
+  { to: "/admin",      icon: ShieldCheck,     label: "Admin Panel" },
 ];
 
 interface SidebarProps {
